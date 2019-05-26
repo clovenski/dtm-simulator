@@ -66,7 +66,7 @@ class Simulator():
         print('> Main Menu > Add Transition')
         prompt1 = 'Enter the state number for the source of this transition: '
         prompt2 = 'Enter the state number for the target of this transition: '
-        target_range = range(1,self.machine.num_states+1)
+        target_range = self.machine.states
         from_state = self.get_user_int(prompt1, target_range)
         to_state = self.get_user_int(prompt2, target_range)
         print('Configuration: (r,w,m) where r is input symbol, w is symbol to write, m is "l" or "r" case-insensitive')
@@ -114,8 +114,7 @@ class Simulator():
                 print('New state added, for a total of {} states'.format(self.machine.num_states))
             elif user_choice == 3: # del state
                 print('> Main Menu > Delete State')
-                num_states = self.machine.num_states
-                target_state = self.get_user_int('Enter state number: ', range(1,num_states+1))
+                target_state = self.get_user_int('Enter state number: ', self.machine.states)
                 self.machine.del_state(target_state)
                 print('Deleted state number {}'.format(target_state))
             elif user_choice == 4: # add transition
@@ -124,12 +123,12 @@ class Simulator():
                 self.process_del_transition()
             elif user_choice == 6: # set final state
                 print('> Main Menu > Set Final State')
-                target_state = self.get_user_int('Enter the state number: ', range(1,self.machine.num_states+1))
+                target_state = self.get_user_int('Enter the state number: ', self.machine.states)
                 self.machine.set_final_state(target_state)
                 print('Successfully set state number {} as final'.format(target_state))
             elif user_choice == 7: # set nonfinal state
                 print('> Main Menu > Set Non-final State')
-                target_state = self.get_user_int('Enter the state number: ', range(1,self.machine.num_states+1))
+                target_state = self.get_user_int('Enter the state number: ', self.machine.states)
                 self.machine.set_nonfinal_state(target_state)
                 print('Successfully set state number {} as non-final'.format(target_state))
             else:                  # test machine

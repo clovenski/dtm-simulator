@@ -11,23 +11,26 @@ class Machine():
         if num_states < 0:
             raise Exception('num_states arg cannot be less than zero')
         self.num_states = num_states
+        self.max_state_num = num_states
         self.blank = blank_symbol
         self.transitions = {}
-        self.final_states = []
+        self.states = set([])
+        self.final_states = {}
         for i in range(1, num_states+1):
             self.transitions[i] = {}
-            self.final_states.append(False)
+            self.final_states[i] = False
+            self.states.add(i)
     
     def get_info(self):
         info = {}
         info['Number of States'] = self.num_states
         final_states = []
         nonfinal_states = []
-        for i, isfinal in enumerate(self.final_states):
-            if isfinal:
-                final_states.append(str(i+1))
+        for state_num in self.final_states:
+            if self.final_states[state_num]:
+                final_states.append(str(state_num))
             else:
-                nonfinal_states.append(str(i+1))
+                nonfinal_states.append(str(state_num))
         info['Final States'] = ' '.join(final_states)
         info['Non-final states'] = ' '.join(nonfinal_states)
         transition_count = 0
@@ -43,8 +46,10 @@ class Machine():
 
     def add_state(self):
         self.num_states += 1
-        self.final_states.append(False)
-        self.transitions[self.num_states] = {}
+        self.max_state_num += 1
+        self.final_states[self.max_state_num] = False
+        self.transitions[self.max_state_num] = {}
+        self.states.add(self.max_state_num)
 
     def del_state(self, state_num):
         pass
@@ -84,10 +89,10 @@ class Machine():
                 print()
 
     def set_final_state(self, state_num):
-        self.final_states[state_num-1] = True
+        self.final_states[state_num] = True
 
     def set_nonfinal_state(self, state_num):
-        self.final_states[state_num-1] = False
+        self.final_states[state_num] = False
 
     def compute(self, string, as_function=False):
         '''
@@ -103,7 +108,7 @@ class Machine():
         current_state = 1
         index = 0
         done = False
-        while not done and (as_function or not self.final_states[current_state-1]):
+        while not done and (as_function or not self.final_states[current_state]):
             target_sets = self.transitions[current_state].values()
             target = None
             for transition_set in target_sets:
@@ -126,7 +131,7 @@ class Machine():
                 done = True
         if as_function:
             return ''.join(string) + '...'
-        elif index < 0 or not self.final_states[current_state-1]:
+        elif index < 0 or not self.final_states[current_state]:
             return False, ''.join(string) + '...'
         else:
             return True, ''.join(string) + '...'
