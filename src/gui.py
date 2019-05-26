@@ -77,23 +77,57 @@ def del_transition():
     update_info()
 
 def run_test():
-    global machine, next_btn, test_str_entry, as_function_var, tape_result, result
+    global machine, test_str_entry, as_function_var, seq_var, tape_result, result
     result.config(text='', bg='white')
+    if machine.is_empty():
+        raise Exception('empty machine')
+    sequential = seq_var.get()
     as_function = as_function_var.get()
-    results = machine.compute(test_str_entry.get(), as_function=as_function)
-    if not as_function:
-        tape_result.config(text=results[1])
-        if results[0]:
-            result.config(text='Accepted', bg='green')
+    if not sequential:
+        results = machine.compute(test_str_entry.get(), as_function=as_function)
+        if not as_function:
+            tape_result.config(text=results[1])
+            if results[0]:
+                result.config(text='Accepted', bg='green')
+            else:
+                result.config(text='Rejected', bg='red')
         else:
-            result.config(text='Rejected', bg='red')
-    else:
-        tape_result.config(text=results)
+            tape_result.config(text=results)
+    else: # sequential test
+        run_seq_test(test_str_entry.get(), as_function, machine.init_state)
+
+def run_seq_test(string, as_function, init_state):
+    global next_btn, stop_btn, ts, tape_result, test_btn
+    ts = TestingState(string, as_function, init_state)
+    tape_result.config(text=ts.tape if len(ts.tape) != 0 else '#')
+    test_btn.config(state='disabled')
+    next_btn.grid()
+    stop_btn.grid()
 
 def next():
-    pass
+    global machine, ts, tape_result, result, test_btn, stop_btn
+    machine.compute_one(ts)
+    tape_result.config(text=ts.tape)
+    if ts.done:
+        if not ts.as_function:
+            if ts.result:
+                result.config(text='Accepted', bg='green')
+            else:
+                result.config(text='Rejected', bg='red')
+        next_btn.grid_remove()
+        stop_btn.grid_remove()
+        test_btn.config(state='normal')
+
+def stop():
+    global ts, next_btn, stop_btn, tape_result, test_btn
+    ts = None
+    tape_result.config(text='')
+    next_btn.grid_remove()
+    stop_btn.grid_remove()
+    test_btn.config(state='normal')
 
 machine = Machine(0)
+ts = None
 
 root = Tk()
 root.title('DTM Simulator')
@@ -153,7 +187,8 @@ test_str_entry.grid(stick='we',row=0,column=1)
 as_function_var = BooleanVar(control3)
 as_func_btn = Checkbutton(control3, text='as function', variable=as_function_var)
 as_func_btn.grid(row=0,column=2)
-seq_btn = Checkbutton(control3, text='sequential test')
+seq_var = BooleanVar(control3)
+seq_btn = Checkbutton(control3, text='sequential test', variable=seq_var)
 seq_btn.grid(row=0,column=3)
 test_btn = Button(control3, text='Run test', command=run_test)
 test_btn.grid(row=0,column=4)
@@ -166,6 +201,9 @@ result.grid(row=1,column=2)
 next_btn = Button(control3, text='Next', command=next)
 next_btn.grid(row=1,column=3)
 next_btn.grid_remove()
+stop_btn = Button(control3, text='Stop', command=stop)
+stop_btn.grid(row=1,column=4)
+stop_btn.grid_remove()
 
 control.add(control1, text='States')
 control.add(control2, text='Transitions')

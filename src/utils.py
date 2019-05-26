@@ -103,6 +103,9 @@ class Machine():
         if state_num in self.states:
             self.final_states[state_num] = False
 
+    def is_empty(self):
+        return len(self.states) == 0
+
     def compute(self, string, as_function=False):
         '''
         Computes the given string and by default returns True if the string
@@ -154,7 +157,7 @@ class Machine():
         '''
         if len(self.states) == 0:
             raise Exception('empty machine')
-        string = testing_state.tape
+        string = list(testing_state.tape) if len(testing_state.tape) != 0 else ['#']
         index = testing_state.index
         max_len = len(string)
         as_function = testing_state.as_function
@@ -172,19 +175,21 @@ class Machine():
             testing_state.current_state = target.to_state
             if not as_function and self.final_states[target.to_state]:
                 testing_state.done = True
+                testing_state.result = True
             string[index] = target.write
             index += 1 if target.move == 'r' or target.move == 'R' else -1
             if index < 0:
-                testing_state.index = index
                 testing_state.done = True
+                if not as_function: testing_state.result = False
             elif index == max_len:
                 string.append(self.blank)
         else: # no transition found
-            testing_state.index = index
             testing_state.done = True
+            if not as_function: testing_state.result = False
         testing_state.tape = ''.join(string)
+        testing_state.index = index
         if testing_state.done:
-            testing_state.tape += '...'
+            testing_state.tape += '#...'
 
 class Transition():
     def __init__(self, from_state, to_state, cnf):
@@ -227,9 +232,10 @@ class Transition():
 # Class to represent a testing state in the GUI version's sequential tests
 
 class TestingState():
-    def __init__(self, string, as_function):
+    def __init__(self, string, as_function, init_state):
+        self.result = None
         self.done = False
         self.index = 0
-        self.current_state = 0
+        self.current_state = init_state
         self.tape = string
         self.as_function = as_function
