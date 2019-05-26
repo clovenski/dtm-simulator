@@ -5,7 +5,7 @@
 import re
 
 class Machine():
-    def __init__(self, num_states, blank_symbol='#'):
+    def __init__(self, num_states, blank_symbol='#', init_state=1):
         if type(num_states) is not int:
             raise TypeError('num_states arg must be an integer')
         if num_states < 0:
@@ -15,6 +15,7 @@ class Machine():
         self.blank = blank_symbol
         self.transitions = {}
         self.states = set([])
+        self.init_state = init_state
         self.final_states = {}
         for i in range(1, num_states+1):
             self.transitions[i] = {}
@@ -50,6 +51,8 @@ class Machine():
         self.final_states[self.max_state_num] = False
         self.transitions[self.max_state_num] = {}
         self.states.add(self.max_state_num)
+        if self.num_states == 1:
+            self.init_state = self.max_state_num
 
     def del_state(self, state_num):
         pass
@@ -88,6 +91,10 @@ class Machine():
                     print(str(transition), end=' ')
                 print()
 
+    def set_init_state(self, state_num):
+        if state_num in self.states:
+            self.init_state = state_num
+
     def set_final_state(self, state_num):
         if state_num in self.states:
             self.final_states[state_num] = True
@@ -104,10 +111,12 @@ class Machine():
         when no appropriate transition can be used. In this case, only the final state
         of the tape is returned.
         '''
+        if len(self.states) == 0:
+            raise Exception('empty machine')
         string = list(string)
         string.append(self.blank)
         max_len = len(string)
-        current_state = 1
+        current_state = self.init_state
         index = 0
         done = False
         while not done and (as_function or not self.final_states[current_state]):
@@ -126,7 +135,7 @@ class Machine():
                 index += 1 if target.move == 'r' or target.move == 'R' else -1
                 if index < 0:
                     done = True
-                if index == max_len:
+                elif index == max_len:
                     string.append(self.blank)
                     max_len += 1
             else: # no transition found
@@ -137,6 +146,45 @@ class Machine():
             return False, ''.join(string) + '...'
         else:
             return True, ''.join(string) + '...'
+
+    def compute_one(self, testing_state):
+        '''
+        Computes one input on the given testing state, adjusting the values in that
+        testing state appropriately.
+        '''
+        if len(self.states) == 0:
+            raise Exception('empty machine')
+        string = testing_state.tape
+        index = testing_state.index
+        max_len = len(string)
+        as_function = testing_state.as_function
+        current_state = testing_state.current_state
+        target_sets = self.transitions[current_state].values()
+        target = None
+        for transition_set in target_sets:
+            try:
+                target = next(x for x in transition_set if x.read == string[index])
+            except StopIteration:
+                continue
+            if target is not None:
+                break
+        if target is not None:
+            testing_state.current_state = target.to_state
+            if not as_function and self.final_states[target.to_state]:
+                testing_state.done = True
+            string[index] = target.write
+            index += 1 if target.move == 'r' or target.move == 'R' else -1
+            if index < 0:
+                testing_state.index = index
+                testing_state.done = True
+            elif index == max_len:
+                string.append(self.blank)
+        else: # no transition found
+            testing_state.index = index
+            testing_state.done = True
+        testing_state.tape = ''.join(string)
+        if testing_state.done:
+            testing_state.tape += '...'
 
 class Transition():
     def __init__(self, from_state, to_state, cnf):
@@ -174,3 +222,14 @@ class Transition():
 
     def __ne__(self, other):
         return not self.__eq__(other)
+
+
+# Class to represent a testing state in the GUI version's sequential tests
+
+class TestingState():
+    def __init__(self, string, as_function):
+        self.done = False
+        self.index = 0
+        self.current_state = 0
+        self.tape = string
+        self.as_function = as_function
