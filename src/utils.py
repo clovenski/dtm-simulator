@@ -89,10 +89,12 @@ class Machine():
                 print()
 
     def set_final_state(self, state_num):
-        self.final_states[state_num] = True
+        if state_num in self.states:
+            self.final_states[state_num] = True
 
     def set_nonfinal_state(self, state_num):
-        self.final_states[state_num] = False
+        if state_num in self.states:
+            self.final_states[state_num] = False
 
     def compute(self, string, as_function=False):
         '''
