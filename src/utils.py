@@ -7,9 +7,9 @@ import re
 class Machine():
     def __init__(self, num_states, blank_symbol='#'):
         if type(num_states) is not int:
-            raise TypeError('num_states arg must be integer')
-        if num_states <= 0:
-            raise Exception('num_states arg cannot be 0 or less')
+            raise TypeError('num_states arg must be an integer')
+        if num_states < 0:
+            raise Exception('num_states arg cannot be less than zero')
         self.num_states = num_states
         self.blank = blank_symbol
         self.transitions = {}
@@ -17,6 +17,37 @@ class Machine():
         for i in range(1, num_states+1):
             self.transitions[i] = {}
             self.final_states.append(False)
+    
+    def get_info(self):
+        info = {}
+        info['Number of States'] = self.num_states
+        final_states = []
+        nonfinal_states = []
+        for i, isfinal in enumerate(self.final_states):
+            if isfinal:
+                final_states.append(str(i+1))
+            else:
+                nonfinal_states.append(str(i+1))
+        info['Final States'] = ' '.join(final_states)
+        info['Non-final states'] = ' '.join(nonfinal_states)
+        transition_count = 0
+        transition_info = '\n'
+        for from_state in self.transitions:
+            for to_state in self.transitions[from_state]:
+                transition_info += '  {} -> {}: '.format(from_state, to_state)
+                for transition in self.transitions[from_state][to_state]:
+                    transition_info += str(transition) + ' '
+                transition_info += '\n'
+        info['Transitions'] = transition_info[:-2] if transition_info != '\n' else 'None'
+        return info
+
+    def add_state(self):
+        self.num_states += 1
+        self.final_states.append(False)
+        self.transitions[self.num_states] = {}
+
+    def del_state(self, state_num):
+        pass
 
     def add_transition(self, from_state, to_state, cnf):
         if from_state not in range(1, self.num_states+1):
