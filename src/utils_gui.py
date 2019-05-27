@@ -4,6 +4,7 @@
 
 from tkinter import Frame, Button, Label, Entry, Checkbutton, StringVar, BooleanVar, Canvas, Scrollbar
 from utils import TestingState
+from math import sqrt, atan, sin, cos
 
 class StatesPanel(Frame):
     def __init__(self, master, machine, info_manager, display_manager):
@@ -203,9 +204,10 @@ class InfoManager(Frame):
         self._info_var = StringVar(self)
         self._machine_info = Label(self, textvariable=self._info_var)
         self._machine_info.pack(fill='x')
-        self._sn_var = StringVar(self)
-        self._state_num_info = Label(self, textvariable=self._sn_var)
+        self._state_num_info = Label(self)
         self._state_num_info.pack(fill='x')
+        self._transitions_info = Label(self)
+        self._transitions_info.pack(fill='x')
         self.update_info()
 
     def update_info(self):
@@ -214,11 +216,17 @@ class InfoManager(Frame):
             info += '{}: {}'.format(desc, value) + '\n'
         self._info_var.set(info)
 
-    def show_state_num(self, _, state_num):
-        self._sn_var.set(str(state_num))
+    def show_state_num(self, state_num):
+        self._state_num_info.config(text=str(state_num))
 
-    def hide_state_num(self, _):
-        self._sn_var.set('')
+    def hide_state_num(self):
+        self._state_num_info.config(text='')
+
+    def show_transitions(self, from_state, to_state):
+        info = '{} -> {}\n'.format(from_state, to_state)
+        for transition in self.machine.transitions[from_state][to_state]:
+            info += str(transition) + '\n'
+        self._transitions_info.config(text=info)
 
 class Display(Canvas):
     def __init__(self, master, machine):
@@ -234,6 +242,9 @@ class Display(Canvas):
         self.bind('<ButtonPress-1>', self._pan_start)
         self.bind('<B1-Motion>', self._pan_exec)
         self._moving_obj = False
+        self._tags_map = {} # maps tags to set of line_ids
+        self._id_map = {} # maps state_num to state_id
+        self._mini_lines = set([]) # line_ids of lines between two states close to each other
 
     def _pan_start(self, event):
         if not self._moving_obj:
@@ -243,24 +254,94 @@ class Display(Canvas):
         if not self._moving_obj:
             self.scan_dragto(event.x, event.y, gain=1)
     
-    def _drag(self, event, id):
+    def _get_line_dist(self, *coords):
+        return sqrt((coords[2]-coords[0])**2 + (coords[3]-coords[1])**2)
+
+    def _get_raw_linecoords(self, *coords):
+        head = (coords[2], coords[3])
+        tail = (coords[0], coords[1])
+        y = head[1] - tail[1]
+        y_sgn = -1 if y < 0 else 1
+        x = head[0] - tail[0]
+        x_sgn = -1 if x < 0 else 1
+        try:
+            theta = atan(abs(y)/abs(x))
+            x_offset = x_sgn * 13 * cos(theta)
+            y_offset = y_sgn * 13 * sin(theta)
+        except ZeroDivisionError:
+            x_offset = 0
+            y_offset = y_sgn * 13
+        return (tail[0]-x_offset, tail[1]-y_offset, head[0]+x_offset, head[1]+y_offset)
+
+    def _get_mod_linecoords(self, *coords):
+        head = (coords[2], coords[3])
+        tail = (coords[0], coords[1])
+        dist = sqrt((head[0]-tail[0])**2 + (head[1]-tail[1])**2)
+        if dist <= 35: return coords
+        ratio = 13 / dist
+        x_offset = ratio * (head[0] - tail[0])
+        y_offset = ratio * (head[1] - tail[1])
+        return (tail[0]+x_offset, tail[1]+y_offset, head[0]-x_offset, head[1]-y_offset)
+
+    def _drag_line_head(self, line_id, event):
+        line_coords = self.coords(line_id)
+        raw_linecoords = (line_coords[0],line_coords[1],self.canvasx(event.x),self.canvasy(event.y))
+        if line_id not in self._mini_lines: # states are separated enough
+            raw_linecoords = self._get_raw_linecoords(*line_coords)
+            new_coords = (raw_linecoords[0],raw_linecoords[1],self.canvasx(event.x),self.canvasy(event.y))
+            mod_linecoords = self._get_mod_linecoords(*new_coords)
+            if mod_linecoords == new_coords: # line became small enough
+                self._mini_lines.add(line_id)
+        elif self._get_line_dist(*raw_linecoords) >= 35: # new line is large enough
+            self._mini_lines.remove(line_id)
+            mod_linecoords = self._get_mod_linecoords(*raw_linecoords)
+        else: # keep drawing small line
+            mod_linecoords = raw_linecoords
+        self.coords(line_id, *mod_linecoords)
+
+    def _drag_line_tail(self, line_id, event):
+        line_coords = self.coords(line_id)
+        raw_linecoords = (self.canvasx(event.x),self.canvasy(event.y),line_coords[2],line_coords[3])
+        if line_id not in self._mini_lines: # states are separated enough
+            raw_linecoords = self._get_raw_linecoords(*line_coords)
+            new_coords = (self.canvasx(event.x),self.canvasy(event.y),raw_linecoords[2],raw_linecoords[3])
+            mod_linecoords = self._get_mod_linecoords(*new_coords)
+            if mod_linecoords == new_coords: # line became small enough
+                self._mini_lines.add(line_id)
+        elif self._get_line_dist(*raw_linecoords) >= 35: # new line is large enough
+            self._mini_lines.remove(line_id)
+            mod_linecoords = self._get_mod_linecoords(*raw_linecoords)
+        else: # keep drawing small line
+            mod_linecoords = raw_linecoords
+        self.coords(line_id, *mod_linecoords)
+
+    def _drag(self, event, state_id):
         self._moving_obj = True
         coords = (
             self.canvasx(event.x)-12,
             self.canvasy(event.y)-12,
             self.canvasx(event.x)+13,
             self.canvasy(event.y)+13)
-        self.coords(id, *coords)
+        self.coords(state_id, *coords)
+        try:
+            for line_id in self._tags_map['-'+str(state_id)]:
+                self._drag_line_head(line_id, event)
+        except KeyError: pass
+        try:
+            for line_id in self._tags_map[str(state_id)+'-']:
+                self._drag_line_tail(line_id, event)
+        except KeyError: pass
 
     def _drop(self, event):
         self._moving_obj = False
 
     def add_state(self, state_num, as_init):
         state_id = self.create_oval(75,75,100,100, fill='linen')
+        self._id_map[state_num] = state_id
         self.tag_bind(state_id, '<B1-Motion>', lambda e: self._drag(e,state_id))
         self.tag_bind(state_id, '<ButtonRelease-1>', self._drop)
-        self.tag_bind(state_id, '<Enter>', lambda e: self.info_manager.show_state_num(e,state_num))
-        self.tag_bind(state_id, '<Leave>', self.info_manager.hide_state_num)
+        self.tag_bind(state_id, '<Enter>', lambda e: self.info_manager.show_state_num(state_num))
+        self.tag_bind(state_id, '<Leave>', lambda e: self.info_manager.hide_state_num())
         if as_init:
             pass # draw init arrow to show as init state
 
@@ -274,7 +355,20 @@ class Display(Canvas):
         pass
 
     def add_transition(self, from_state, to_state, cnf):
-        pass
+        # may not need cnf
+        f_coords = self.coords(self._id_map[from_state])
+        f_coords = (f_coords[0]+13, f_coords[1]+13)
+        t_coords = self.coords(self._id_map[to_state])
+        t_coords = (t_coords[0]+13, t_coords[1]+13)
+        line_coords = self._get_mod_linecoords(f_coords[0], f_coords[1], t_coords[0], t_coords[1])
+        tag1 = str(self._id_map[from_state]) + '-'
+        tag2 = '-' + str(self._id_map[to_state])
+        line_id = self.create_line(line_coords, arrow='last', tags=(tag1,tag2))
+        self.tag_bind(line_id, '<ButtonPress-1>', lambda e: self.info_manager.show_transitions(from_state,to_state))
+        try: self._tags_map[tag1].add(line_id)
+        except: self._tags_map[tag1] = set([line_id])
+        try: self._tags_map[tag2].add(line_id)
+        except: self._tags_map[tag2] = set([line_id])
 
     def del_transition(self, from_state, to_state, cnf):
         pass
