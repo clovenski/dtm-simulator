@@ -95,6 +95,8 @@ class Machine():
         except (StopIteration, KeyError):
             return
         self.transitions[from_state][to_state].remove(target)
+        if len(self.transitions[from_state][to_state]) == 0:
+            del self.transitions[from_state][to_state]
 
     def print_transitions(self):
         for from_state in self.transitions:
