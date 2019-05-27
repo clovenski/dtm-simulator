@@ -77,8 +77,8 @@ def del_transition():
     update_info()
 
 def run_test():
-    global machine, test_str_entry, as_function_var, seq_var, tape_result, result
-    result.config(text='', bg='white')
+    global machine, test_str_entry, as_function_var, seq_var, tape_result, result, btn_og_color
+    result.config(text='', bg=btn_og_color)
     if machine.is_empty():
         raise Exception('empty machine')
     sequential = seq_var.get()
@@ -140,7 +140,7 @@ root.geometry('500x500+{}+{}'.format(x_offset, y_offset))
 display = Frame(root, bg='gray')
 control = ttk.Notebook(display)
 
-control1 = Frame(control, bg='yellow')
+control1 = Frame(control)
 control1.pack(fill='x')
 
 add_state_btn = Button(control1, text='Add state', command=add_state)
@@ -156,7 +156,7 @@ set_nonfinal_btn.grid(row=1,column=3)
 del_state_btn = Button(control1, text='Delete state', command=del_state)
 del_state_btn.grid(row=1,column=4)
 
-control2 = Frame(control, bg='green')
+control2 = Frame(control)
 control2.pack(fill='x')
 
 t_prompt1 = Label(control2, text='Source state number')
@@ -176,7 +176,7 @@ add_transition_btn.grid(row=1,column=3)
 del_transition_btn = Button(control2, text='Delete', command=del_transition)
 del_transition_btn.grid(row=1,column=4)
 
-control3 = Frame(display, bg='blue')
+control3 = Frame(display)
 control3.grid_columnconfigure(1, weight=1)
 control3.pack(side='bottom', fill='x')
 
@@ -194,9 +194,10 @@ test_btn = Button(control3, text='Run test', command=run_test)
 test_btn.grid(row=0,column=4)
 tape_result_lbl = Label(control3, text='Tape result')
 tape_result_lbl.grid(row=1,column=0)
-tape_result = Label(control3, width=50)
+tape_result = Label(control3, width=50, bg='white')
 tape_result.grid(sticky='we',row=1,column=1)
-result = Label(control3, width=10, bg='white', fg='white')
+result = Label(control3, width=10, fg='white')
+btn_og_color = result.cget('bg')
 result.grid(row=1,column=2)
 next_btn = Button(control3, text='Next', command=next)
 next_btn.grid(row=1,column=3)
@@ -209,7 +210,7 @@ control.add(control1, text='States')
 control.add(control2, text='Transitions')
 control.add(control3, text='Testing')
 control.pack(side='bottom', fill='x')
-info = Frame(display, width=250, bg='red')
+info = Frame(display)
 
 m_info_var = StringVar(info)
 machine_info = Label(info, textvariable=m_info_var)
