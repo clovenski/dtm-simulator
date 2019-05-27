@@ -22,8 +22,8 @@ if __name__ == '__main__':
     control = ttk.Notebook(root)
     control.pack(side='bottom', fill='x')
 
-    states_panel = StatesPanel(control, machine, display.info_manager)
-    trans_panel = TransitionsPanel(control, machine, display.info_manager)
+    states_panel = StatesPanel(control, machine, display.info_manager, display)
+    trans_panel = TransitionsPanel(control, machine, display.info_manager, display)
     test_panel = TestingPanel(control, machine)
 
     control.add(states_panel, text='States')

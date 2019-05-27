@@ -6,11 +6,12 @@ from tkinter import Frame, Button, Label, Entry, Checkbutton, StringVar, Boolean
 from utils import TestingState
 
 class StatesPanel(Frame):
-    def __init__(self, master, machine, info_manager):
+    def __init__(self, master, machine, info_manager, display_manager):
         super().__init__(master=master)
         self.pack(fill='x')
         self.machine = machine
         self.info_manager = info_manager
+        self.display_manager = display_manager
         self.add_state_btn = Button(self, text='Add state', command=self.add_state)
         self.add_state_btn.grid(row=0,column=0)
         self.state_entry_label = Label(self, text='Enter state number')
@@ -27,26 +28,8 @@ class StatesPanel(Frame):
     def add_state(self):
         self.machine.add_state()
         self.info_manager.update_info()
-
-    def set_final(self):
-        try:
-            target_state = int(self.state_entry.get())
-            self.machine.set_final_state(target_state)
-        except:
-            # can update error message var here
-            pass
-        self.state_entry.delete(0, 'end')
-        self.info_manager.update_info()
-
-    def set_nonfinal(self):
-        try:
-            target_state = int(self.state_entry.get())
-            self.machine.set_nonfinal_state(target_state)
-        except:
-            # can update error message var here
-            pass
-        self.state_entry.delete(0, 'end')
-        self.info_manager.update_info()
+        added_init_state = self.machine.init_state == self.machine.max_state_num
+        self.display_manager.add_state(self.machine.max_state_num, added_init_state)
 
     def del_state(self):
         try:
@@ -57,13 +40,37 @@ class StatesPanel(Frame):
             pass
         self.state_entry.delete(0, 'end')
         self.info_manager.update_info()
+        self.display_manager.del_state(target_state)
+
+    def set_final(self):
+        try:
+            target_state = int(self.state_entry.get())
+            self.machine.set_final_state(target_state)
+        except:
+            # can update error message var here
+            pass
+        self.state_entry.delete(0, 'end')
+        self.info_manager.update_info()
+        self.display_manager.set_final(target_state)
+
+    def set_nonfinal(self):
+        try:
+            target_state = int(self.state_entry.get())
+            self.machine.set_nonfinal_state(target_state)
+        except:
+            # can update error message var here
+            pass
+        self.state_entry.delete(0, 'end')
+        self.info_manager.update_info()
+        self.display_manager.set_nonfinal(target_state)
 
 class TransitionsPanel(Frame):
-    def __init__(self, master, machine, info_manager):
+    def __init__(self, master, machine, info_manager, display_manager):
         super().__init__(master=master)
         self.pack(fill='x')
         self.machine = machine
         self.info_manager = info_manager
+        self.display_manager = display_manager
         self.t_prompt1 = Label(self, text='Source state number')
         self.t_prompt1.grid(row=0,column=0)
         self.t_prompt2 = Label(self, text='Target state number')
@@ -94,6 +101,7 @@ class TransitionsPanel(Frame):
         self.t_state_entry.delete(0, 'end')
         self.cnf_entry.delete(0, 'end')
         self.info_manager.update_info()
+        self.display_manager.add_transition(f_state, t_state, cnf)
 
     def del_transition(self):
         try:
@@ -108,6 +116,7 @@ class TransitionsPanel(Frame):
         self.t_state_entry.delete(0, 'end')
         self.cnf_entry.delete(0, 'end')
         self.info_manager.update_info()
+        self.display_manager.del_transition(f_state, t_state, cnf)
 
 class TestingPanel(Frame):
     def __init__(self, master, machine):
@@ -193,7 +202,10 @@ class InfoManager(Frame):
         self.machine = machine
         self.info_var = StringVar(self)
         self.machine_info = Label(self, textvariable=self.info_var)
-        self.machine_info.pack()
+        self.machine_info.pack(fill='x')
+        self.sn_var = StringVar(self)
+        self.state_num_info = Label(self, textvariable=self.sn_var)
+        self.state_num_info.pack(fill='x')
         self.update_info()
 
     def update_info(self):
@@ -202,9 +214,15 @@ class InfoManager(Frame):
             info += '{}: {}'.format(desc, value) + '\n'
         self.info_var.set(info)
 
+    def show_state_num(self, _, state_num):
+        self.sn_var.set(str(state_num))
+
+    def hide_state_num(self, _):
+        self.sn_var.set('')
+
 class Display(Canvas):
     def __init__(self, master, machine):
-        super().__init__(master=master, bg='gray')
+        super().__init__(master=master, bg='light gray')
         self.machine = machine
         self.info_manager = InfoManager(self, machine)
         self.pack(fill='both', expand=True)
@@ -215,10 +233,48 @@ class Display(Canvas):
         self.ysb.pack(side='right', fill='y')
         self.bind('<ButtonPress-1>', self.pan_start)
         self.bind('<B1-Motion>', self.pan_exec)
-        self.create_oval(50,50,75,75, fill='bisque')
+        self.moving_obj = False
 
     def pan_start(self, event):
-        self.scan_mark(event.x, event.y)
+        if not self.moving_obj:
+            self.scan_mark(event.x, event.y)
 
     def pan_exec(self, event):
-        self.scan_dragto(event.x, event.y, gain=1)
+        if not self.moving_obj:
+            self.scan_dragto(event.x, event.y, gain=1)
+    
+    def drag(self, event, id):
+        self.moving_obj = True
+        coords = (
+            self.canvasx(event.x)-12,
+            self.canvasy(event.y)-12,
+            self.canvasx(event.x)+13,
+            self.canvasy(event.y)+13)
+        self.coords(id, *coords)
+
+    def drop(self, event):
+        self.moving_obj = False
+
+    def add_state(self, state_num, as_init):
+        state_id = self.create_oval(75,75,100,100, fill='linen')
+        self.tag_bind(state_id, '<B1-Motion>', lambda e: self.drag(e,state_id))
+        self.tag_bind(state_id, '<ButtonRelease-1>', self.drop)
+        self.tag_bind(state_id, '<Enter>', lambda e: self.info_manager.show_state_num(e,state_num))
+        self.tag_bind(state_id, '<Leave>', self.info_manager.hide_state_num)
+        if as_init:
+            pass # draw init arrow to show as init state
+
+    def del_state(self, state_num):
+        pass
+
+    def set_final(self, state_num):
+        pass
+
+    def set_nonfinal(self, state_num):
+        pass
+
+    def add_transition(self, from_state, to_state, cnf):
+        pass
+
+    def del_transition(self, from_state, to_state, cnf):
+        pass
