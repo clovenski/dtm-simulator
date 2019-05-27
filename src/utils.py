@@ -55,7 +55,20 @@ class Machine():
             self.init_state = self.max_state_num
 
     def del_state(self, state_num):
-        pass
+        if state_num not in self.states:
+            return
+        else:
+            self.states.remove(state_num)
+            del self.final_states[state_num]
+            self.num_states -= 1
+            if state_num == self.max_state_num:
+                self.max_state_num = max(self.states) if len(self.states) > 0 else 0
+            del self.transitions[state_num]
+            for f in self.states:
+                try:
+                    del self.transitions[f][state_num]
+                except:
+                    continue
 
     def add_transition(self, from_state, to_state, cnf):
         if from_state not in range(1, self.num_states+1):
