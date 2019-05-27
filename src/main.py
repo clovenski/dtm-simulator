@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 
 # Main script for the terminal-driven version of DTM Simulator
-# Currently a work in progress
+# Currently a work in progress - todo: implement _del_transition(), _set_init_state()
 
 from utils import Machine, Transition
 
 class Simulator():
     def __init__(self):
-        self.main_menu_opts = [
+        self._main_menu_opts = [
             'View machine info',
             'Add a state',
             'Delete a state',
@@ -18,13 +18,13 @@ class Simulator():
             'Test Machine',
             'Exit'
         ]
-        self.main_menu_size = len(self.main_menu_opts)
+        self._main_menu_size = len(self._main_menu_opts)
 
-    def print_welcome(self):
+    def _print_welcome(self):
         print('  DTM Simulator')
         print('Test your designs of a simple Deterministic Turing Machine.', end='\n\n')
 
-    def init_machine(self):
+    def _init_machine(self):
         while True:
             try:
                 num_states = int(input('Enter number of states in the machine: '))
@@ -33,11 +33,11 @@ class Simulator():
             except:
                 print('INVALID INPUT')
 
-    def print_menu_opts(self, opts):
+    def _print_menu_opts(self, opts):
         for i, option in enumerate(opts):
             print(i+1, '. ', option, sep='')
 
-    def get_user_choice(self, prompt, menu_size):
+    def _get_user_choice(self, prompt, menu_size):
         while True:
             try:
                 choice = int(input(prompt))
@@ -48,7 +48,7 @@ class Simulator():
             except:
                 print('INVALID INPUT')
 
-    def get_user_int(self, prompt, range):
+    def _get_user_int(self, prompt, range):
         while True:
             try:
                 choice = int(input(prompt))
@@ -59,34 +59,34 @@ class Simulator():
             except:
                 print('INVALID INPUT')
 
-    def get_user_str(self, prompt):
+    def _get_user_str(self, prompt):
         return input(prompt)
 
-    def process_add_transition(self):
+    def _process_add_transition(self):
         print('> Main Menu > Add Transition')
         prompt1 = 'Enter the state number for the source of this transition: '
         prompt2 = 'Enter the state number for the target of this transition: '
         target_range = self.machine.states
-        from_state = self.get_user_int(prompt1, target_range)
-        to_state = self.get_user_int(prompt2, target_range)
+        from_state = self._get_user_int(prompt1, target_range)
+        to_state = self._get_user_int(prompt2, target_range)
         print('Configuration: (r,w,m) where r is input symbol, w is symbol to write, m is "l" or "r" case-insensitive')
         print('** Don\'t forget the parentheses')
-        cnf = self.get_user_str('Enter the transition config: ')
+        cnf = self._get_user_str('Enter the transition config: ')
         try:
             self.machine.add_transition(from_state, to_state, cnf)
             print('Successfully added transition from {} to {}: {}'.format(from_state,to_state,cnf))
         except Exception as e:
             print('ERROR:', e)
 
-    def process_del_transition(self):
+    def _process_del_transition(self): # todo
         pass
 
-    def test_machine(self):
+    def _test_machine(self):
         print('> Main Menu > Test Machine')
         prompt = 'Enter 0 to test whether the string is accepted or rejected,\n' \
             'otherwise enter 1 to compute the string as a function: '
-        as_function = self.get_user_int(prompt, range(2)) == 1
-        string = self.get_user_str('Enter the string: ')
+        as_function = self._get_user_int(prompt, range(2)) == 1
+        string = self._get_user_str('Enter the string: ')
         result = self.machine.compute(string, as_function)
         if as_function:
             print('Tape result:', result)
@@ -96,14 +96,14 @@ class Simulator():
             print('Tape result:', result[1])
 
     def run(self):
-        self.print_welcome()
-        self.init_machine()
+        self._print_welcome()
+        self._init_machine()
         done = False
         while not done:
             print('> Main Menu')
-            self.print_menu_opts(self.main_menu_opts)
-            user_choice = self.get_user_choice('Enter choice: ', self.main_menu_size)
-            if user_choice == self.main_menu_size: # user wants to exit
+            self._print_menu_opts(self._main_menu_opts)
+            user_choice = self._get_user_choice('Enter choice: ', self._main_menu_size)
+            if user_choice == self._main_menu_size: # user wants to exit
                 done = True
             elif user_choice == 1: # view machine info
                 info = self.machine.get_info()
@@ -114,25 +114,25 @@ class Simulator():
                 print('New state added, for a total of {} states'.format(self.machine.num_states))
             elif user_choice == 3: # del state
                 print('> Main Menu > Delete State')
-                target_state = self.get_user_int('Enter state number: ', self.machine.states)
+                target_state = self._get_user_int('Enter state number: ', self.machine.states)
                 self.machine.del_state(target_state)
                 print('Deleted state number {}'.format(target_state))
             elif user_choice == 4: # add transition
-                self.process_add_transition()
+                self._process_add_transition()
             elif user_choice == 5: # del transition
-                self.process_del_transition()
+                self._process_del_transition()
             elif user_choice == 6: # set final state
                 print('> Main Menu > Set Final State')
-                target_state = self.get_user_int('Enter the state number: ', self.machine.states)
+                target_state = self._get_user_int('Enter the state number: ', self.machine.states)
                 self.machine.set_final_state(target_state)
                 print('Successfully set state number {} as final'.format(target_state))
             elif user_choice == 7: # set nonfinal state
                 print('> Main Menu > Set Non-final State')
-                target_state = self.get_user_int('Enter the state number: ', self.machine.states)
+                target_state = self._get_user_int('Enter the state number: ', self.machine.states)
                 self.machine.set_nonfinal_state(target_state)
                 print('Successfully set state number {} as non-final'.format(target_state))
             else:                  # test machine
-                self.test_machine()
+                self._test_machine()
 
 if __name__ == '__main__':
     app = Simulator()
