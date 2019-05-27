@@ -2,7 +2,7 @@
 
 # Classes to organize sections of the GUI
 
-from tkinter import Frame, Button, Label, Entry, Checkbutton, StringVar, BooleanVar
+from tkinter import Frame, Button, Label, Entry, Checkbutton, StringVar, BooleanVar, Canvas, Scrollbar
 from utils import TestingState
 
 class StatesPanel(Frame):
@@ -144,7 +144,7 @@ class TestingPanel(Frame):
 
     def run_test(self):
         self.result.config(text='', bg=self.btn_og_color)
-        if machine.is_empty():
+        if self.machine.is_empty():
             raise Exception('empty machine')
         sequential = self.seq_var.get()
         as_function = self.as_function_var.get()
@@ -194,9 +194,31 @@ class InfoManager(Frame):
         self.info_var = StringVar(self)
         self.machine_info = Label(self, textvariable=self.info_var)
         self.machine_info.pack()
+        self.update_info()
 
     def update_info(self):
         info = ''
         for desc, value in self.machine.get_info().items():
             info += '{}: {}'.format(desc, value) + '\n'
         self.info_var.set(info)
+
+class Display(Canvas):
+    def __init__(self, master, machine):
+        super().__init__(master=master, bg='gray')
+        self.machine = machine
+        self.info_manager = InfoManager(self, machine)
+        self.pack(fill='both', expand=True)
+        self.xsb = Scrollbar(self, orient='horizontal', command=self.xview)
+        self.ysb = Scrollbar(self, orient='vertical', command=self.yview)
+        self.config(xscrollcommand=self.xsb.set, yscrollcommand=self.ysb.set, scrollregion=(0,0,1000,1000))
+        self.xsb.pack(side='bottom', fill='x')
+        self.ysb.pack(side='right', fill='y')
+        self.bind('<ButtonPress-1>', self.pan_start)
+        self.bind('<B1-Motion>', self.pan_exec)
+        self.create_oval(50,50,75,75, fill='bisque')
+
+    def pan_start(self, event):
+        self.scan_mark(event.x, event.y)
+
+    def pan_exec(self, event):
+        self.scan_dragto(event.x, event.y, gain=1)

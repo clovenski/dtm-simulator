@@ -177,6 +177,11 @@ class Machine():
         max_len = len(string)
         as_function = testing_state.as_function
         current_state = testing_state.current_state
+        if not as_function and self.final_states[current_state]:
+            testing_state.done = True
+            testing_state.result = True
+            testing_state.tape += '#...'
+            return
         target_sets = self.transitions[current_state].values()
         target = None
         for transition_set in target_sets:
