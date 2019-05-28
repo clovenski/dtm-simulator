@@ -3,7 +3,8 @@
 # Main script for the GUI version of DTM Simulator
 # Currently a work in progress
 
-from tkinter import Tk, ttk
+from tkinter import Tk
+from tkinter.ttk import Notebook
 from utils_gui import *
 from utils import Machine
 
@@ -19,7 +20,7 @@ if __name__ == '__main__':
     root.geometry('500x500+{}+{}'.format(x_offset, y_offset))
 
     display = Display(root, machine)
-    control = ttk.Notebook(root)
+    control = Notebook(root)
     control.pack(side='bottom', fill='x')
 
     states_panel = StatesPanel(control, machine, display.info_manager, display)

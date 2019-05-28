@@ -3,6 +3,7 @@
 # Classes to organize sections of the GUI
 
 from tkinter import Frame, Button, Label, Entry, Checkbutton, StringVar, BooleanVar, Canvas, Scrollbar
+from tkinter.ttk import LabelFrame
 from utils import TestingState
 from math import sqrt, atan, sin, cos
 
@@ -96,11 +97,11 @@ class TransitionsPanel(Frame):
         self._cnf_var2.trace('w', lambda *args: self._restrict_entry(self._cnf_var2,*args))
         self._cnf_var3 = StringVar()
         self._cnf_var3.trace('w', lambda *args: self._restrict_entry(self._cnf_var3,*args))
-        self._cnf_read_entry = Entry(self, width=1, textvariable=self._cnf_var1)
+        self._cnf_read_entry = Entry(self, width=2, textvariable=self._cnf_var1)
         self._cnf_read_entry.grid(row=1,column=2)
-        self._cnf_write_entry = Entry(self, width=1, textvariable=self._cnf_var2)
+        self._cnf_write_entry = Entry(self, width=2, textvariable=self._cnf_var2)
         self._cnf_write_entry.grid(row=1,column=3)
-        self._cnf_move_entry = Entry(self, width=1, textvariable=self._cnf_var3)
+        self._cnf_move_entry = Entry(self, width=2, textvariable=self._cnf_var3)
         self._cnf_move_entry.grid(row=1,column=4)
         # buttons
         self._add_transition_btn = Button(self, text='Add', command=self._add_transition)
@@ -230,39 +231,76 @@ class InfoManager(Frame):
         super().__init__(master=master)
         self.pack(side='right', fill='y')
         self.machine = machine
-        self._info_var = StringVar(self)
-        self._machine_info = Label(self, textvariable=self._info_var)
-        self._machine_info.pack(fill='x')
-        self._state_num_info = Label(self)
-        self._state_num_info.pack(fill='x')
-        self._transitions_info = Label(self)
-        self._transitions_info.pack(fill='x')
+        self._info_frame = LabelFrame(self, text='Main Info', labelanchor='n')
+        self._info_frame.pack()
+        # number of states
+        self._info_label1 = Label(self._info_frame, text='# of states')
+        self._info_label1.grid(row=0,column=0)
+        self._info_var1 = StringVar(self._info_frame)
+        self._machine_info1 = Label(self._info_frame, textvariable=self._info_var1, width=3)
+        self._machine_info1.grid(row=0,column=1)
+        # init state
+        self._info_label2 = Label(self._info_frame, text='Initial state')
+        self._info_label2.grid(row=1,column=0)
+        self._info_var2 = StringVar(self._info_frame)
+        self._machine_info2 = Label(self._info_frame, textvariable=self._info_var2, width=3)
+        self._machine_info2.grid(row=1,column=1)
+        # nonfinal states
+        self._info_label3 = Label(self._info_frame, text='# of non-final states')
+        self._info_label3.grid(row=2,column=0)
+        self._info_var3 = StringVar(self._info_frame)
+        self._machine_info3 = Label(self._info_frame, textvariable=self._info_var3, width=3)
+        self._machine_info3.grid(row=2,column=1)
+        # final states
+        self._info_label4 = Label(self._info_frame, text='# of final states')
+        self._info_label4.grid(row=3,column=0)
+        self._info_var4 = StringVar(self._info_frame)
+        self._machine_info4 = Label(self._info_frame, textvariable=self._info_var4, width=3)
+        self._machine_info4.grid(row=3,column=1)
+        # number of transitions
+        self._info_label5 = Label(self._info_frame, text='# of transitions')
+        self._info_label5.grid(row=4,column=0)
+        self._info_var5 = StringVar(self._info_frame)
+        self._machine_info5 = Label(self._info_frame, textvariable=self._info_var5, width=3)
+        self._machine_info5.grid(row=4,column=1)
+        # transitions info
+        self._trans_frame = LabelFrame(self, text='Transitions Info', labelanchor='n')
+        self._trans_frame.pack(fill='both', expand=True)
+        self._trans_info1 = Label(self._trans_frame, anchor='n')
+        self._trans_info1.pack(side='top')
+        self._trans_info2 = Label(self._trans_frame, anchor='n')
+        self._trans_info2.pack(side='top')
+        # status bar
+        self._status_bar = Label(self)
+        self._status_bar.pack()
         self.update_info()
 
     def update_info(self):
-        info = ''
-        for desc, value in self.machine.get_info().items():
-            info += '{}: {}'.format(desc, value) + '\n'
-        self._info_var.set(info)
+        info = self.machine.get_info()
+        self._info_var1.set(info['# of states'])
+        self._info_var2.set(info['Initial state'])
+        self._info_var3.set(info['# of non-final states'])
+        self._info_var4.set(info['# of final states'])
+        self._info_var5.set(info['# of transitions'])
 
-    def show_state_num(self, state_num):
-        self._state_num_info.config(text=str(state_num))
+    def update_status(self, text):
+        self._status_bar.config(text=text)
 
-    def hide_state_num(self):
-        self._state_num_info.config(text='')
+    def clear_status(self):
+        self._status_bar.config(text='')
 
     def show_transitions(self, from_state, to_state):
         info1 = '{} -> {}\n'.format(from_state, to_state)
-        for transition in self.machine.transitions[from_state][to_state]:
-            info1 += str(transition) + '\n'
+        info1 += '\n'.join(self.machine.get_transitions(from_state,to_state))
+        info2 = None
         try:
             if from_state in self.machine.transitions[to_state]:
                 info2 = '{} -> {}\n'.format(to_state,from_state)
-                for transition in self.machine.transitions[to_state][from_state]:
-                    info2 += str(transition) +'\n'
+                info2 += '\n'.join(self.machine.get_transitions(to_state,from_state))
         except KeyError: pass
-        info = '{}\n{}'.format(info1, info2) if from_state < to_state else '{}\n{}'.format(info2, info1)
-        self._transitions_info.config(text=info)
+        self._trans_info1.config(text=info1)
+        if info2 is not None:
+            self._trans_info2.config(text=info2)
 
 class Display(Canvas):
     def __init__(self, master, machine):
@@ -352,7 +390,7 @@ class Display(Canvas):
             mod_linecoords = raw_linecoords
         self.coords(line_id, *mod_linecoords)
 
-    def _drag(self, event, state_id):
+    def _drag(self, event, state_id, state_num):
         self._moving_obj = True
         coords = (
             self.canvasx(event.x)-12,
@@ -375,10 +413,11 @@ class Display(Canvas):
     def add_state(self, state_num, as_init):
         state_id = self.create_oval(75,75,100,100, fill='linen')
         self._id_map[state_num] = state_id
-        self.tag_bind(state_id, '<B1-Motion>', lambda e: self._drag(e,state_id))
+        self.tag_bind(state_id, '<B1-Motion>', lambda e: self._drag(e,state_id,state_num))
         self.tag_bind(state_id, '<ButtonRelease-1>', self._drop)
-        self.tag_bind(state_id, '<Enter>', lambda e: self.info_manager.show_state_num(state_num))
-        self.tag_bind(state_id, '<Leave>', lambda e: self.info_manager.hide_state_num())
+        self.tag_bind(state_id, '<Enter>', lambda e: self.info_manager.update_status('State {}'.format(state_num)))
+        self.tag_bind(state_id, '<Leave>', lambda e: self.info_manager.clear_status())
+        self.info_manager.update_status('Added State {}'.format(state_num))
         if as_init:
             pass # draw init arrow to show as init state
 

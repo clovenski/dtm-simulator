@@ -5,7 +5,7 @@
 import re
 
 class Machine():
-    def __init__(self, num_states, blank_symbol='#', init_state=1):
+    def __init__(self, num_states, blank_symbol='#', init_state=0):
         if type(num_states) is not int:
             raise TypeError('num_states arg must be an integer')
         if num_states < 0:
@@ -24,7 +24,7 @@ class Machine():
     
     def get_info(self):
         info = {}
-        info['Number of States'] = self.num_states
+        info['# of states'] = self.num_states
         final_states = []
         nonfinal_states = []
         for state_num in self.final_states:
@@ -32,9 +32,15 @@ class Machine():
                 final_states.append(str(state_num))
             else:
                 nonfinal_states.append(str(state_num))
-        info['Final States'] = ' '.join(final_states)
         info['Non-final states'] = ' '.join(nonfinal_states)
-        transition_count = 0
+        info['Final States'] = ' '.join(final_states)
+        info['Initial state'] = self.init_state
+        info['# of non-final states'] = len(nonfinal_states)
+        info['# of final states'] = len(final_states)
+        transition_cnt = 0
+        for s in self.transitions.values():
+            transition_cnt += len(s)
+        info['# of transitions'] = transition_cnt
         transition_info = '\n'
         for from_state in self.transitions:
             for to_state in self.transitions[from_state]:
@@ -44,6 +50,9 @@ class Machine():
                 transition_info += '\n'
         info['Transitions'] = transition_info[:-2] if transition_info != '\n' else 'None'
         return info
+
+    def get_transitions(self, from_state, to_state):
+        return list(str(t) for t in self.transitions[from_state][to_state])
 
     def add_state(self):
         self.num_states += 1
@@ -61,6 +70,8 @@ class Machine():
             self.states.remove(state_num)
             del self.final_states[state_num]
             self.num_states -= 1
+            if state_num == self.init_state:
+                self.init_state = min(self.states) if len(self.states) > 0 else 0
             if state_num == self.max_state_num:
                 self.max_state_num = max(self.states) if len(self.states) > 0 else 0
             del self.transitions[state_num]
