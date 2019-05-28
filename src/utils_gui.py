@@ -72,35 +72,61 @@ class TransitionsPanel(Frame):
         self.machine = machine
         self.info_manager = info_manager
         self.display_manager = display_manager
+        # states prompts
         self._t_prompt1 = Label(self, text='Source state number')
         self._t_prompt1.grid(row=0,column=0)
         self._t_prompt2 = Label(self, text='Target state number')
         self._t_prompt2.grid(row=0,column=1)
-        self._t_prompt3 = Label(self, text='Config.')
-        self._t_prompt3.grid(row=0,column=2)
+        # configuration prompts
+        self._cnf_prompt1 = Label(self, text='R')
+        self._cnf_prompt1.grid(row=0,column=2)
+        self._cnf_prompt2 = Label(self, text='W')
+        self._cnf_prompt2.grid(row=0,column=3)
+        self._cnf_prompt3 = Label(self, text='M')
+        self._cnf_prompt3.grid(row=0,column=4)
+        # state entries
         self._f_state_entry = Entry(self, width=3)
         self._f_state_entry.grid(row=1,column=0)
         self._t_state_entry = Entry(self, width=3)
         self._t_state_entry.grid(row=1,column=1)
-        self._cnf_entry = Entry(self, width=10)
-        self._cnf_entry.grid(row=1,column=2)
+        # configuration entries
+        self._cnf_var1 = StringVar()
+        self._cnf_var1.trace('w', lambda *args: self._restrict_entry(self._cnf_var1,*args))
+        self._cnf_var2 = StringVar()
+        self._cnf_var2.trace('w', lambda *args: self._restrict_entry(self._cnf_var2,*args))
+        self._cnf_var3 = StringVar()
+        self._cnf_var3.trace('w', lambda *args: self._restrict_entry(self._cnf_var3,*args))
+        self._cnf_read_entry = Entry(self, width=1, textvariable=self._cnf_var1)
+        self._cnf_read_entry.grid(row=1,column=2)
+        self._cnf_write_entry = Entry(self, width=1, textvariable=self._cnf_var2)
+        self._cnf_write_entry.grid(row=1,column=3)
+        self._cnf_move_entry = Entry(self, width=1, textvariable=self._cnf_var3)
+        self._cnf_move_entry.grid(row=1,column=4)
+        # buttons
         self._add_transition_btn = Button(self, text='Add', command=self._add_transition)
-        self._add_transition_btn.grid(row=1,column=3)
+        self._add_transition_btn.grid(row=1,column=5)
         self._del_transition_btn = Button(self, text='Delete', command=self._del_transition)
-        self._del_transition_btn.grid(row=1,column=4)
+        self._del_transition_btn.grid(row=1,column=6)
     
+    def _restrict_entry(self, entry, *args):
+        val = entry.get()
+        if len(val) > 1: entry.set(val[0])
+
     def _add_transition(self):
         try:
             f_state = int(self._f_state_entry.get())
             t_state = int(self._t_state_entry.get())
-            cnf = self._cnf_entry.get()
+            cnf = '({},{},{})'.format(
+                self._cnf_read_entry.get(),self._cnf_write_entry.get(),self._cnf_move_entry.get())
             self.machine.add_transition(f_state, t_state, cnf)
         except:
             # can update error message var here
             pass
         self._f_state_entry.delete(0, 'end')
         self._t_state_entry.delete(0, 'end')
-        self._cnf_entry.delete(0, 'end')
+        self._cnf_read_entry.delete(0, 'end')
+        self._cnf_write_entry.delete(0, 'end')
+        self._cnf_move_entry.delete(0, 'end')
         self.info_manager.update_info()
         self.display_manager.add_transition(f_state, t_state, cnf)
 
@@ -108,14 +134,17 @@ class TransitionsPanel(Frame):
         try:
             f_state = int(self._f_state_entry.get())
             t_state = int(self._t_state_entry.get())
-            cnf = self._cnf_entry.get()
+            cnf = '({},{},{})'.format(
+                self._cnf_read_entry.get(),self._cnf_write_entry.get(),self._cnf_move_entry.get())
             self.machine.del_transition(f_state, t_state, cnf)
         except:
             # can update error message var here
             pass
         self._f_state_entry.delete(0, 'end')
         self._t_state_entry.delete(0, 'end')
-        self._cnf_entry.delete(0, 'end')
+        self._cnf_read_entry.delete(0, 'end')
+        self._cnf_write_entry.delete(0, 'end')
+        self._cnf_move_entry.delete(0, 'end')
         self.info_manager.update_info()
         self.display_manager.del_transition(f_state, t_state, cnf)
 
@@ -223,9 +252,16 @@ class InfoManager(Frame):
         self._state_num_info.config(text='')
 
     def show_transitions(self, from_state, to_state):
-        info = '{} -> {}\n'.format(from_state, to_state)
+        info1 = '{} -> {}\n'.format(from_state, to_state)
         for transition in self.machine.transitions[from_state][to_state]:
-            info += str(transition) + '\n'
+            info1 += str(transition) + '\n'
+        try:
+            if from_state in self.machine.transitions[to_state]:
+                info2 = '{} -> {}\n'.format(to_state,from_state)
+                for transition in self.machine.transitions[to_state][from_state]:
+                    info2 += str(transition) +'\n'
+        except KeyError: pass
+        info = '{}\n{}'.format(info1, info2) if from_state < to_state else '{}\n{}'.format(info2, info1)
         self._transitions_info.config(text=info)
 
 class Display(Canvas):
@@ -244,7 +280,8 @@ class Display(Canvas):
         self._moving_obj = False
         self._tags_map = {} # maps tags to set of line_ids
         self._id_map = {} # maps state_num to state_id
-        self._mini_lines = set([]) # line_ids of lines between two states close to each other
+        self._mini_lines = set([]) # set of line_ids of lines between two states close to each other
+        self._lines_map = {} # maps state pairs to line_id for that pair
 
     def _pan_start(self, event):
         if not self._moving_obj:
@@ -356,6 +393,12 @@ class Display(Canvas):
 
     def add_transition(self, from_state, to_state, cnf):
         # may not need cnf
+        if '{}-{}'.format(from_state,to_state) in self._lines_map:
+            return
+        elif '{}-{}'.format(to_state,from_state) in self._lines_map:
+            line_id = self._lines_map['{}-{}'.format(to_state,from_state)]
+            self.itemconfig(line_id, arrow='both')
+            return
         f_coords = self.coords(self._id_map[from_state])
         f_coords = (f_coords[0]+13, f_coords[1]+13)
         t_coords = self.coords(self._id_map[to_state])
@@ -364,6 +407,7 @@ class Display(Canvas):
         tag1 = str(self._id_map[from_state]) + '-'
         tag2 = '-' + str(self._id_map[to_state])
         line_id = self.create_line(line_coords, arrow='last', tags=(tag1,tag2))
+        self._lines_map['{}-{}'.format(from_state,to_state)] = line_id
         self.tag_bind(line_id, '<ButtonPress-1>', lambda e: self.info_manager.show_transitions(from_state,to_state))
         try: self._tags_map[tag1].add(line_id)
         except: self._tags_map[tag1] = set([line_id])
