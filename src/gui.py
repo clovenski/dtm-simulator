@@ -25,7 +25,7 @@ if __name__ == '__main__':
 
     states_panel = StatesPanel(control, machine, display.info_manager, display)
     trans_panel = TransitionsPanel(control, machine, display.info_manager, display)
-    test_panel = TestingPanel(control, machine, display.info_manager)
+    test_panel = TestingPanel(control, machine, display.info_manager, display)
 
     control.add(states_panel, text='States')
     control.add(trans_panel, text='Transitions')

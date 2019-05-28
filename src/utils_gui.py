@@ -185,12 +185,13 @@ class TransitionsPanel(Frame):
         self.info_manager.update_info()
 
 class TestingPanel(Frame):
-    def __init__(self, master, machine, info_manager):
+    def __init__(self, master, machine, info_manager, display_manager):
         super().__init__(master=master)
         self.grid_columnconfigure(1, weight=1)
         self.pack(fill='x')
         self.machine = machine
         self.info_manager = info_manager
+        self.display_manager = display_manager
         self._testing_state = None
         self._test_str_prompt = Label(self, text='Enter test string')
         self._test_str_prompt.grid(row=0,column=0)
@@ -237,14 +238,19 @@ class TestingPanel(Frame):
                 self._tape_result.config(text=results)
         else: # sequential test
             self._testing_state = TestingState(self._test_str_entry.get(), as_function, self.machine.init_state)
-            self._tape_result.config(text=self._testing_state.tape if len(self._testing_state.tape) != 0 else '#')
+            self._tape_result.config(
+                text=self._testing_state.tape if len(self._testing_state.tape) != 0 else self.machine.blank,
+                underline=0)
             self._test_btn.config(state='disabled')
             self._next_btn.grid()
             self._stop_btn.grid()
+            self.display_manager.clear_highlight()
+            self.display_manager.highlight_state(self._testing_state.current_state)
 
     def _next(self):
         self.machine.compute_one(self._testing_state)
-        self._tape_result.config(text=self._testing_state.tape)
+        self._tape_result.config(text=self._testing_state.tape, underline=self._testing_state.index)
+        self.display_manager.highlight_state(self._testing_state.current_state, done=self._testing_state.done)
         if self._testing_state.done:
             if not self._testing_state.as_function:
                 if self._testing_state.result:
@@ -258,10 +264,11 @@ class TestingPanel(Frame):
 
     def _stop(self):
         self._testing_state = None
-        self._tape_result.config(text='')
+        self._tape_result.config(text='', underline=-1)
         self._next_btn.grid_remove()
         self._stop_btn.grid_remove()
         self._test_btn.config(state='normal')
+        self.display_manager.clear_highlight()
 
 class InfoManager(Frame):
     def __init__(self, master, machine):
@@ -369,6 +376,9 @@ class Display(Canvas):
         self.config(xscrollcommand=self._xsb.set, yscrollcommand=self._ysb.set, scrollregion=(0,0,1000,1000))
         self._xsb.pack(side='bottom', fill='x')
         self._ysb.pack(side='right', fill='y')
+        self._clear_highlight_btn = Button(self, text='Clear', command=self.clear_highlight)
+        self._clear_highlight_btn.pack(side='bottom')
+        self._clear_highlight_btn.pack_forget()
         self.bind('<ButtonPress-1>', self._pan_start)
         self.bind('<B1-Motion>', self._pan_exec)
         self._moving_obj = False
@@ -381,6 +391,9 @@ class Display(Canvas):
             'width': 2,
             'activewidth': 4,
             'activefill': 'gray40'}
+        self._highlighted_state_id = None # id of highlighted state, for sequential tests
+        self._default_state_fill = 'linen'
+        self._highlight_fill = 'gold'
 
     def _pan_start(self, event):
         if not self._moving_obj:
@@ -496,7 +509,7 @@ class Display(Canvas):
     def add_state(self, state_num, as_init):
         x,y = self.canvasx(75+randrange(150)),self.canvasy(75+randrange(200))
         coords = (x, y, x+25, y+25)
-        state_id = self.create_oval(*coords, fill='linen')
+        state_id = self.create_oval(*coords, fill=self._default_state_fill)
         tag = str(state_id) + 't'
         self.create_text(coords[0]+13,coords[1]+13, text=str(state_num), tags=tag)
         self._id_map[state_num] = state_id
@@ -625,3 +638,18 @@ class Display(Canvas):
                 self._mini_lines.discard(line_id)
                 self._loops.discard(line_id)
                 self.delete(line_id)
+    
+    def highlight_state(self, state_num, done=False):
+        if self._highlighted_state_id is not None:
+            self.itemconfig(self._highlighted_state_id, fill=self._default_state_fill)
+        state_id = self._id_map[state_num]
+        self.itemconfig(state_id, fill=self._highlight_fill)
+        self._highlighted_state_id = state_id
+        if done:
+            self._clear_highlight_btn.pack(side='bottom')
+
+    def clear_highlight(self):
+        if self._highlighted_state_id is not None:
+            self.itemconfig(self._highlighted_state_id, fill=self._default_state_fill)
+            self._highlighted_state_id = None
+        self._clear_highlight_btn.pack_forget()
