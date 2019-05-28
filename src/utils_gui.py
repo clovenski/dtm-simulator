@@ -39,18 +39,20 @@ class StatesPanel(Frame):
     def _del_state(self):
         try:
             target_state = int(self._state_entry.get())
+            init_deleted = target_state == self.machine.init_state
             self.machine.del_state(target_state)
-            self.display_manager.del_state(target_state)
+            self.display_manager.del_state(target_state, init_deleted)
         except ValueError:
             self.info_manager.update_status('Enter state number')
         self._state_entry.delete(0, 'end')
         self.info_manager.update_info()
+        self.info_manager.hide_transitions()
 
     def _set_init(self):
         try:
             target_state = int(self._state_entry.get())
             self.machine.set_init_state(target_state)
-            self.display_manager.set_final(target_state)
+            self.display_manager.set_init(target_state)
         except ValueError:
             self.info_manager.update_status('Enter state number')
         self._state_entry.delete(0, 'end')
@@ -183,11 +185,12 @@ class TransitionsPanel(Frame):
         self.info_manager.update_info()
 
 class TestingPanel(Frame):
-    def __init__(self, master, machine):
+    def __init__(self, master, machine, info_manager):
         super().__init__(master=master)
         self.grid_columnconfigure(1, weight=1)
         self.pack(fill='x')
         self.machine = machine
+        self.info_manager = info_manager
         self._testing_state = None
         self._test_str_prompt = Label(self, text='Enter test string')
         self._test_str_prompt.grid(row=0,column=0)
@@ -221,6 +224,7 @@ class TestingPanel(Frame):
             raise Exception('empty machine')
         sequential = self._seq_var.get()
         as_function = self._as_function_var.get()
+        self.info_manager.update_status('{} is blank symbol'.format(self.machine.blank))
         if not sequential:
             results = self.machine.compute(self._test_str_entry.get(), as_function=as_function)
             if not as_function:
@@ -331,9 +335,17 @@ class InfoManager(Frame):
                 info2 = '{} -> {}\n'.format(to_state,from_state)
                 info2 += '\n'.join(self.machine.get_transitions(to_state,from_state))
         except KeyError: pass
-        self._trans_info1.config(text=info1)
         if info2 is not None:
+            if from_state > to_state:
+                temp = info1
+                info1 = info2
+                info2 = temp
             self._trans_info2.config(text=info2)
+        self._trans_info1.config(text=info1)
+
+    def hide_transitions(self):
+        self._trans_info1.config(text='')
+        self._trans_info2.config(text='')
 
 class Display(Canvas):
     def __init__(self, master, machine):
@@ -349,11 +361,10 @@ class Display(Canvas):
         self.bind('<ButtonPress-1>', self._pan_start)
         self.bind('<B1-Motion>', self._pan_exec)
         self._moving_obj = False
-        self._tags_map = {} # maps tags to set of line_ids
         self._id_map = {} # maps state_num to state_id
         self._mini_lines = set([]) # set of line_ids of lines between two states close to each other
-        self._lines_map = {} # maps state pairs to line_id for that pair
         self._loops = set([]) # set of all loop transitions
+        self._init_id = None # id of init state
 
     def _pan_start(self, event):
         if not self._moving_obj:
@@ -444,12 +455,14 @@ class Display(Canvas):
             self.canvasy(event.y)+13)
         self.coords(state_id, *coords)
         self.coords(str(state_id)+'t', coords[0]+12, coords[1]+12)
+        self.coords(str(state_id)+'f', coords[0]-3, coords[1]-3, coords[2]+3, coords[3]+3)
+        self.coords(str(state_id)+'i', coords[0]-20, coords[1]-20, coords[0], coords[1])
         try:
-            for line_id in self._tags_map['-'+str(state_id)]:
+            for line_id in self.find_withtag('-'+str(state_id)):
                 self._drag_line_head(line_id, event)
         except KeyError: pass
         try:
-            for line_id in self._tags_map[str(state_id)+'-']:
+            for line_id in self.find_withtag(str(state_id)+'-'):
                 self._drag_line_tail(line_id, event)
         except KeyError: pass
 
@@ -480,19 +493,48 @@ class Display(Canvas):
         self.tag_bind(tag, '<Enter>', lambda e: self._update_status(state_num))
         self.info_manager.update_status('Added State {}'.format(state_num))
         if as_init:
-            pass # draw init arrow to show as init state
+            # draw init arrow to show as init state
+            self.create_line(x-20,y-20,x,y, arrow='last', tags=str(state_id)+'i')
+            self._init_id = state_id
 
-    def del_state(self, state_num):
-        pass
+    def del_state(self, state_num, init_deleted):
+        state_id = self._id_map[state_num]
+        core_tag = str(state_id)
+        self.delete(state_id)
+        for line_id in self.find_withtag(core_tag+'-'):
+            self._mini_lines.discard(line_id)
+            self._loops.discard(line_id)
+            self.delete(line_id)
+        for line_id in self.find_withtag('-'+core_tag):
+            self._mini_lines.discard(line_id)
+            self.delete(line_id)
+        self.delete(core_tag+'f')
+        self.delete(core_tag+'t')
+        if init_deleted:
+            self.delete(str(state_id)+'i')
+            if self.machine.init_state != 0:
+                self.set_init(self.machine.init_state)
 
     def set_init(self, state_num):
-        pass
+        self.delete(str(self._init_id)+'i')
+        state_id = self._id_map[state_num]
+        tag = str(state_id) + 'i'
+        x,y,_,_ = self.coords(state_id)
+        self.create_line(x-20,y-20,x,y, arrow='last', tags=tag)
+        self._init_id = state_id
 
     def set_final(self, state_num):
-        pass
+        state_id = self._id_map[state_num]
+        tag = str(state_id) + 'f'
+        if len(self.find_withtag(tag)) == 0:
+            state_coords = self.coords(state_id)
+            coords = (state_coords[0]-3, state_coords[1]-3, state_coords[2]+3, state_coords[3]+3)
+            self.create_oval(*coords, tags=tag)
 
     def set_nonfinal(self, state_num):
-        pass
+        state_id = self._id_map[state_num]
+        tag = str(state_id) + 'f'
+        self.delete(tag)
 
     def _add_loop(self, state_num):
         state_coords = self.coords(self._id_map[state_num])
@@ -503,18 +545,16 @@ class Display(Canvas):
             state_coords[0]+16,state_coords[1]+2)
         tag = str(self._id_map[state_num]) + '-'
         line_id = self.create_line(*coords, smooth=True, arrow='last', tags=tag)
-        self._lines_map['{}-{}'.format(state_num,state_num)] = line_id
         self.tag_bind(line_id, '<ButtonPress-1>', lambda e: self.info_manager.show_transitions(state_num,state_num))
         self._loops.add(line_id)
-        try: self._tags_map[tag].add(line_id)
-        except: self._tags_map[tag] = set([line_id])
 
     def add_transition(self, from_state, to_state, cnf):
         # may not need cnf
-        if '{}-{}'.format(from_state,to_state) in self._lines_map:
+        line_exists = len(self.find_withtag('{}-{}'.format(from_state,to_state))) == 1
+        if line_exists:
             return
-        elif '{}-{}'.format(to_state,from_state) in self._lines_map:
-            line_id = self._lines_map['{}-{}'.format(to_state,from_state)]
+        elif len(self.find_withtag('{}-{}'.format(to_state,from_state))) == 1:
+            line_id = self.find_withtag('{}-{}'.format(to_state,from_state))[0]
             self.itemconfig(line_id, arrow='both')
             return
         if from_state == to_state:
@@ -526,13 +566,9 @@ class Display(Canvas):
         line_coords = self._get_mod_linecoords(f_coords[0], f_coords[1], t_coords[0], t_coords[1])
         tag1 = str(self._id_map[from_state]) + '-'
         tag2 = '-' + str(self._id_map[to_state])
-        line_id = self.create_line(line_coords, arrow='last', tags=(tag1,tag2))
-        self._lines_map['{}-{}'.format(from_state,to_state)] = line_id
+        tag3 = '{}-{}'.format(from_state,to_state)
+        line_id = self.create_line(line_coords, arrow='last', tags=(tag1,tag2,tag3))
         self.tag_bind(line_id, '<ButtonPress-1>', lambda e: self.info_manager.show_transitions(from_state,to_state))
-        try: self._tags_map[tag1].add(line_id)
-        except: self._tags_map[tag1] = set([line_id])
-        try: self._tags_map[tag2].add(line_id)
-        except: self._tags_map[tag2] = set([line_id])
 
     def del_transition(self, from_state, to_state, cnf):
         pass
