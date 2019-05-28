@@ -6,6 +6,7 @@ from tkinter import Frame, Button, Label, Entry, Checkbutton, StringVar, Boolean
 from tkinter.ttk import LabelFrame
 from utils import TestingState
 from math import sqrt, atan, sin, cos
+from random import randrange
 
 class StatesPanel(Frame):
     def __init__(self, master, machine, info_manager, display_manager):
@@ -403,7 +404,7 @@ class Display(Canvas):
             mod_linecoords = raw_linecoords
         self.coords(line_id, *mod_linecoords)
 
-    def _drag(self, event, state_id, state_num):
+    def _drag(self, event, state_id):
         self._moving_obj = True
         coords = (
             self.canvasx(event.x)-12,
@@ -411,6 +412,7 @@ class Display(Canvas):
             self.canvasx(event.x)+13,
             self.canvasy(event.y)+13)
         self.coords(state_id, *coords)
+        self.coords(str(state_id)+'t', coords[0]+12, coords[1]+12)
         try:
             for line_id in self._tags_map['-'+str(state_id)]:
                 self._drag_line_head(line_id, event)
@@ -423,13 +425,28 @@ class Display(Canvas):
     def _drop(self, event):
         self._moving_obj = False
 
+    def _update_status(self, state_num):
+        if not self._moving_obj:
+            self.info_manager.update_status('State {}'.format(state_num))
+
+    def _clear_status(self):
+        if not self._moving_obj:
+            self.info_manager.clear_status()
+
     def add_state(self, state_num, as_init):
-        state_id = self.create_oval(75,75,100,100, fill='linen')
+        x,y = self.canvasx(75+randrange(150)),self.canvasy(75+randrange(200))
+        coords = (x, y, x+25, y+25)
+        state_id = self.create_oval(*coords, fill='linen')
+        tag = str(state_id) + 't'
+        self.create_text(coords[0]+13,coords[1]+13, text=str(state_num), tags=tag)
         self._id_map[state_num] = state_id
-        self.tag_bind(state_id, '<B1-Motion>', lambda e: self._drag(e,state_id,state_num))
+        self.tag_bind(state_id, '<B1-Motion>', lambda e: self._drag(e,state_id))
         self.tag_bind(state_id, '<ButtonRelease-1>', self._drop)
-        self.tag_bind(state_id, '<Enter>', lambda e: self.info_manager.update_status('State {}'.format(state_num)))
-        self.tag_bind(state_id, '<Leave>', lambda e: self.info_manager.clear_status())
+        self.tag_bind(state_id, '<Enter>', lambda e: self._update_status(state_num))
+        self.tag_bind(state_id, '<Leave>', lambda e: self._clear_status())
+        self.tag_bind(tag, '<B1-Motion>', lambda e: self._drag(e,state_id))
+        self.tag_bind(tag, '<ButtonRelease-1>', self._drop)
+        self.tag_bind(tag, '<Enter>', lambda e: self._update_status(state_num))
         self.info_manager.update_status('Added State {}'.format(state_num))
         if as_init:
             pass # draw init arrow to show as init state
