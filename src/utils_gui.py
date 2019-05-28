@@ -20,12 +20,14 @@ class StatesPanel(Frame):
         self._state_entry_label.grid(row=1,column=0)
         self._state_entry = Entry(self, width=3)
         self._state_entry.grid(row=1,column=1)
+        self._set_init_btn = Button(self, text='Set as initial', command=self._set_init)
+        self._set_init_btn.grid(row=1,column=2)
         self._set_final_btn = Button(self, text='Set as final', command=self._set_final)
-        self._set_final_btn.grid(row=1,column=2)
+        self._set_final_btn.grid(row=1,column=3)
         self._set_nonfinal_btn = Button(self, text='Set as non-final', command=self._set_nonfinal)
-        self._set_nonfinal_btn.grid(row=1,column=3)
+        self._set_nonfinal_btn.grid(row=1,column=4)
         self._del_state_btn = Button(self, text='Delete state', command=self._del_state)
-        self._del_state_btn.grid(row=1,column=4)
+        self._del_state_btn.grid(row=1,column=5)
 
     def _add_state(self):
         self.machine.add_state()
@@ -43,6 +45,17 @@ class StatesPanel(Frame):
         self._state_entry.delete(0, 'end')
         self.info_manager.update_info()
         self.display_manager.del_state(target_state)
+
+    def _set_init(self):
+        try:
+            target_state = int(self._state_entry.get())
+            self.machine.set_init_state(target_state)
+        except:
+            # can update error message var here
+            pass
+        self._state_entry.delete(0, 'end')
+        self.info_manager.update_info()
+        self.display_manager.set_final(target_state)
 
     def _set_final(self):
         try:
@@ -422,6 +435,9 @@ class Display(Canvas):
             pass # draw init arrow to show as init state
 
     def del_state(self, state_num):
+        pass
+
+    def set_init(self, state_num):
         pass
 
     def set_final(self, state_num):
