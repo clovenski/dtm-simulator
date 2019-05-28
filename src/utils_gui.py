@@ -40,45 +40,41 @@ class StatesPanel(Frame):
         try:
             target_state = int(self._state_entry.get())
             self.machine.del_state(target_state)
-        except:
-            # can update error message var here
-            pass
+            self.display_manager.del_state(target_state)
+        except ValueError:
+            self.info_manager.update_status('Enter state number')
         self._state_entry.delete(0, 'end')
         self.info_manager.update_info()
-        self.display_manager.del_state(target_state)
 
     def _set_init(self):
         try:
             target_state = int(self._state_entry.get())
             self.machine.set_init_state(target_state)
-        except:
-            # can update error message var here
-            pass
+            self.display_manager.set_final(target_state)
+        except ValueError:
+            self.info_manager.update_status('Enter state number')
         self._state_entry.delete(0, 'end')
         self.info_manager.update_info()
-        self.display_manager.set_final(target_state)
 
     def _set_final(self):
         try:
             target_state = int(self._state_entry.get())
             self.machine.set_final_state(target_state)
-        except:
-            # can update error message var here
-            pass
+            self.display_manager.set_final(target_state)
+        except ValueError:
+            self.info_manager.update_status('Enter state number')
         self._state_entry.delete(0, 'end')
         self.info_manager.update_info()
-        self.display_manager.set_final(target_state)
 
     def _set_nonfinal(self):
         try:
             target_state = int(self._state_entry.get())
             self.machine.set_nonfinal_state(target_state)
-        except:
-            # can update error message var here
-            pass
+            self.display_manager.set_nonfinal(target_state)
+        except ValueError:
+            self.info_manager.update_status('Enter state number')
         self._state_entry.delete(0, 'end')
         self.info_manager.update_info()
-        self.display_manager.set_nonfinal(target_state)
 
 class TransitionsPanel(Frame):
     def __init__(self, master, machine, info_manager, display_manager):
@@ -129,39 +125,62 @@ class TransitionsPanel(Frame):
 
     def _add_transition(self):
         try:
-            f_state = int(self._f_state_entry.get())
-            t_state = int(self._t_state_entry.get())
+            f_state = self._f_state_entry.get()
+            if f_state == '':
+                raise Exception('Enter source')
+            else:
+                f_state = int(f_state)
+            t_state = self._t_state_entry.get()
+            if t_state != '':
+                t_state = int(t_state)
+            else:
+                raise Exception('Enter target')
             cnf = '({},{},{})'.format(
                 self._cnf_read_entry.get(),self._cnf_write_entry.get(),self._cnf_move_entry.get())
             self.machine.add_transition(f_state, t_state, cnf)
-        except:
-            # can update error message var here
-            pass
+            self.display_manager.add_transition(f_state, t_state, cnf)
+            self.info_manager.update_status('Added transition')
+            self.info_manager.show_transitions(f_state, t_state)
+        except ValueError:
+            self.info_manager.update_status('Invalid input')
+        except Exception as e:
+            self.info_manager.update_status(str(e))
         self._f_state_entry.delete(0, 'end')
         self._t_state_entry.delete(0, 'end')
         self._cnf_read_entry.delete(0, 'end')
         self._cnf_write_entry.delete(0, 'end')
         self._cnf_move_entry.delete(0, 'end')
         self.info_manager.update_info()
-        self.display_manager.add_transition(f_state, t_state, cnf)
 
     def _del_transition(self):
         try:
-            f_state = int(self._f_state_entry.get())
-            t_state = int(self._t_state_entry.get())
+            f_state = self._f_state_entry.get()
+            if f_state == '':
+                raise Exception('Enter source')
+            else:
+                f_state = int(f_state)
+            t_state = self._t_state_entry.get()
+            if t_state != '':
+                t_state = int(t_state)
+            else:
+                raise Exception('Enter target')
             cnf = '({},{},{})'.format(
                 self._cnf_read_entry.get(),self._cnf_write_entry.get(),self._cnf_move_entry.get())
-            self.machine.del_transition(f_state, t_state, cnf)
-        except:
-            # can update error message var here
-            pass
+            deleted = self.machine.del_transition(f_state, t_state, cnf)
+            self.display_manager.del_transition(f_state, t_state, cnf)
+            result = 'Deleted transition' if deleted else 'Transition not found'
+            self.info_manager.update_status(result)
+            if deleted: self.info_manager.show_transitions(f_state, t_state)
+        except ValueError:
+            self.info_manager.update_status('Invalid input')
+        except Exception as e:
+            self.info_manager.update_status(str(e))
         self._f_state_entry.delete(0, 'end')
         self._t_state_entry.delete(0, 'end')
         self._cnf_read_entry.delete(0, 'end')
         self._cnf_write_entry.delete(0, 'end')
         self._cnf_move_entry.delete(0, 'end')
         self.info_manager.update_info()
-        self.display_manager.del_transition(f_state, t_state, cnf)
 
 class TestingPanel(Frame):
     def __init__(self, master, machine):
@@ -308,7 +327,7 @@ class InfoManager(Frame):
         info1 += '\n'.join(self.machine.get_transitions(from_state,to_state))
         info2 = None
         try:
-            if from_state in self.machine.transitions[to_state]:
+            if from_state != to_state and from_state in self.machine.transitions[to_state]:
                 info2 = '{} -> {}\n'.format(to_state,from_state)
                 info2 += '\n'.join(self.machine.get_transitions(to_state,from_state))
         except KeyError: pass
@@ -334,6 +353,7 @@ class Display(Canvas):
         self._id_map = {} # maps state_num to state_id
         self._mini_lines = set([]) # set of line_ids of lines between two states close to each other
         self._lines_map = {} # maps state pairs to line_id for that pair
+        self._loops = set([]) # set of all loop transitions
 
     def _pan_start(self, event):
         if not self._moving_obj:
@@ -388,7 +408,18 @@ class Display(Canvas):
             mod_linecoords = raw_linecoords
         self.coords(line_id, *mod_linecoords)
 
+    def _drag_loop(self, line_id, event):
+        event_coords = (self.canvasx(event.x), self.canvasy(event.y))
+        coords = (
+            event_coords[0]+-7,event_coords[1]-11,
+            event_coords[0]-22,event_coords[1]-36,
+            event_coords[0]+18,event_coords[1]-36,
+            event_coords[0]+3,event_coords[1]-11)
+        self.coords(line_id, *coords)
+
     def _drag_line_tail(self, line_id, event):
+        if line_id in self._loops:
+            return self._drag_loop(line_id, event)
         line_coords = self.coords(line_id)
         raw_linecoords = (self.canvasx(event.x),self.canvasy(event.y),line_coords[2],line_coords[3])
         if line_id not in self._mini_lines: # states are separated enough
@@ -463,6 +494,21 @@ class Display(Canvas):
     def set_nonfinal(self, state_num):
         pass
 
+    def _add_loop(self, state_num):
+        state_coords = self.coords(self._id_map[state_num])
+        coords = (
+            state_coords[0]+6,state_coords[1]+2,
+            state_coords[0]-9,state_coords[1]-23,
+            state_coords[0]+31,state_coords[1]-23,
+            state_coords[0]+16,state_coords[1]+2)
+        tag = str(self._id_map[state_num]) + '-'
+        line_id = self.create_line(*coords, smooth=True, arrow='last', tags=tag)
+        self._lines_map['{}-{}'.format(state_num,state_num)] = line_id
+        self.tag_bind(line_id, '<ButtonPress-1>', lambda e: self.info_manager.show_transitions(state_num,state_num))
+        self._loops.add(line_id)
+        try: self._tags_map[tag].add(line_id)
+        except: self._tags_map[tag] = set([line_id])
+
     def add_transition(self, from_state, to_state, cnf):
         # may not need cnf
         if '{}-{}'.format(from_state,to_state) in self._lines_map:
@@ -471,6 +517,8 @@ class Display(Canvas):
             line_id = self._lines_map['{}-{}'.format(to_state,from_state)]
             self.itemconfig(line_id, arrow='both')
             return
+        if from_state == to_state:
+            return self._add_loop(from_state)
         f_coords = self.coords(self._id_map[from_state])
         f_coords = (f_coords[0]+13, f_coords[1]+13)
         t_coords = self.coords(self._id_map[to_state])

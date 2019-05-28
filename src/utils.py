@@ -52,7 +52,10 @@ class Machine():
         return info
 
     def get_transitions(self, from_state, to_state):
-        return list(str(t) for t in self.transitions[from_state][to_state])
+        try:
+            return list(str(t) for t in self.transitions[from_state][to_state])
+        except KeyError:
+            return []
 
     def add_state(self):
         self.num_states += 1
@@ -83,31 +86,33 @@ class Machine():
 
     def add_transition(self, from_state, to_state, cnf):
         if from_state not in range(1, self.num_states+1):
-            raise Exception('from_state arg out of range: [1...{}]'.format(self.num_states))
+            raise Exception('Invalid source')
         if to_state not in range(1, self.num_states+1):
-            raise Exception('to_state arg out of range: [1...{}]'.format(self.num_states))
+            raise Exception('Invalid target')
         if type(cnf) is not str:
-            raise TypeError('cnf arg must be of str type')
+            raise TypeError('Configuration must be string')
         transition = Transition(from_state, to_state, cnf)
-        try:
-            dup = transition in self.transitions[from_state][to_state]
-        except KeyError:
-            self.transitions[from_state][to_state] = set([])
-            dup = False
-        finally:
-            if dup:
-                raise Exception('transition {} would make the machine non-deterministic'.format(cnf))
-            else:
+        dup = False
+        for s in self.transitions[from_state].values():
+            dup = transition in s
+            if dup: break
+        if not dup:
+            try:
                 self.transitions[from_state][to_state].add(transition)
+            except KeyError:
+                self.transitions[from_state][to_state] = set([transition])
+        else:
+            raise Exception('Non-determinism')
 
     def del_transition(self, from_state, to_state, cnf):
         try:
             target = next((x for x in self.transitions[from_state][to_state] if x.cnf == cnf))
         except (StopIteration, KeyError):
-            return
+            return False
         self.transitions[from_state][to_state].remove(target)
         if len(self.transitions[from_state][to_state]) == 0:
             del self.transitions[from_state][to_state]
+        return True
 
     def print_transitions(self):
         for from_state in self.transitions:
@@ -235,7 +240,7 @@ class Transition():
         '''
         match = re.fullmatch(r'\((\S),\s*(\S),\s*([lLrR])\)', cnf)
         if match is None:
-            raise Exception('given cnf for transition is invalid: {}'.format(cnf))
+            raise Exception('Invalid configuration')
         else:
             self.from_state = from_state
             self.to_state = to_state
