@@ -327,21 +327,32 @@ class InfoManager(Frame):
         self._status_bar.config(text='')
 
     def show_transitions(self, from_state, to_state):
-        info1 = '{} -> {}\n'.format(from_state, to_state)
-        info1 += '\n'.join(self.machine.get_transitions(from_state,to_state))
+        info1 = None
         info2 = None
+        if self.machine.get_transition_count(from_state, to_state) > 0:
+            info1 = '{} -> {}\n'.format(from_state, to_state)
+            info1 += '\n'.join(self.machine.get_transitions(from_state,to_state))
         try:
             if from_state != to_state and from_state in self.machine.transitions[to_state]:
                 info2 = '{} -> {}\n'.format(to_state,from_state)
                 info2 += '\n'.join(self.machine.get_transitions(to_state,from_state))
         except KeyError: pass
-        if info2 is not None:
+        if info2 is not None and info1 is None:
+            self._trans_info1.config(text=info2)
+            self._trans_info2.config(text='')
+        elif info2 is None and info1 is not None:
+            self._trans_info1.config(text=info1)
+            self._trans_info2.config(text='')
+        elif info1 is None and info2 is None:
+            self._trans_info1.config(text='')
+            self._trans_info2.config(text='')
+        else:
             if from_state > to_state:
                 temp = info1
                 info1 = info2
                 info2 = temp
+            self._trans_info1.config(text=info1)
             self._trans_info2.config(text=info2)
-        self._trans_info1.config(text=info1)
 
     def hide_transitions(self):
         self._trans_info1.config(text='')
@@ -365,6 +376,11 @@ class Display(Canvas):
         self._mini_lines = set([]) # set of line_ids of lines between two states close to each other
         self._loops = set([]) # set of all loop transitions
         self._init_id = None # id of init state
+        self._lines_config = {
+            'arrow': 'last',
+            'width': 2,
+            'activewidth': 4,
+            'activefill': 'gray40'}
 
     def _pan_start(self, event):
         if not self._moving_obj:
@@ -494,7 +510,8 @@ class Display(Canvas):
         self.info_manager.update_status('Added State {}'.format(state_num))
         if as_init:
             # draw init arrow to show as init state
-            self.create_line(x-20,y-20,x,y, arrow='last', tags=str(state_id)+'i')
+            self.create_line(x-20,y-20,x,y,
+                arrow=self._lines_config['arrow'], tags=str(state_id)+'i', width=self._lines_config['width'])
             self._init_id = state_id
 
     def del_state(self, state_num, init_deleted):
@@ -520,7 +537,8 @@ class Display(Canvas):
         state_id = self._id_map[state_num]
         tag = str(state_id) + 'i'
         x,y,_,_ = self.coords(state_id)
-        self.create_line(x-20,y-20,x,y, arrow='last', tags=tag)
+        self.create_line(x-20,y-20,x,y,
+            arrow=self._lines_config['arrow'], tags=tag, width=self._lines_config['width'])
         self._init_id = state_id
 
     def set_final(self, state_num):
@@ -543,15 +561,19 @@ class Display(Canvas):
             state_coords[0]-9,state_coords[1]-23,
             state_coords[0]+31,state_coords[1]-23,
             state_coords[0]+16,state_coords[1]+2)
-        tag = str(self._id_map[state_num]) + '-'
-        line_id = self.create_line(*coords, smooth=True, arrow='last', tags=tag)
+        tag1 = str(self._id_map[state_num]) + '-'
+        tag2 = '{}-{}'.format(state_num,state_num)
+        line_id = self.create_line(*coords, smooth=True, tags=(tag1,tag2), **self._lines_config)
         self.tag_bind(line_id, '<ButtonPress-1>', lambda e: self.info_manager.show_transitions(state_num,state_num))
         self._loops.add(line_id)
 
     def add_transition(self, from_state, to_state, cnf):
         # may not need cnf
-        line_exists = len(self.find_withtag('{}-{}'.format(from_state,to_state))) == 1
-        if line_exists:
+        find_result = self.find_withtag('{}-{}'.format(from_state,to_state))
+        if len(find_result) == 1:
+            line = find_result[0]
+            if self.itemcget(line, 'arrow') == 'first':
+                self.itemconfig(line, arrow='both')
             return
         elif len(self.find_withtag('{}-{}'.format(to_state,from_state))) == 1:
             line_id = self.find_withtag('{}-{}'.format(to_state,from_state))[0]
@@ -563,12 +585,43 @@ class Display(Canvas):
         f_coords = (f_coords[0]+13, f_coords[1]+13)
         t_coords = self.coords(self._id_map[to_state])
         t_coords = (t_coords[0]+13, t_coords[1]+13)
-        line_coords = self._get_mod_linecoords(f_coords[0], f_coords[1], t_coords[0], t_coords[1])
+        coords = (f_coords[0], f_coords[1], t_coords[0], t_coords[1])
+        mini_line = self._get_line_dist(*coords) <= 35
+        line_coords = self._get_mod_linecoords(*coords) if not mini_line else coords
         tag1 = str(self._id_map[from_state]) + '-'
         tag2 = '-' + str(self._id_map[to_state])
         tag3 = '{}-{}'.format(from_state,to_state)
-        line_id = self.create_line(line_coords, arrow='last', tags=(tag1,tag2,tag3))
+        line_id = self.create_line(line_coords, tags=(tag1,tag2,tag3), **self._lines_config)
+        if mini_line: self._mini_lines.add(line_id)
         self.tag_bind(line_id, '<ButtonPress-1>', lambda e: self.info_manager.show_transitions(from_state,to_state))
 
     def del_transition(self, from_state, to_state, cnf):
-        pass
+        # may not need cnf
+        if self.machine.get_transition_count(from_state, to_state) != 0:
+            return
+        find_result1 = self.find_withtag('{}-{}'.format(from_state,to_state))
+        find_result2 = self.find_withtag('{}-{}'.format(to_state,from_state))
+        if len(find_result1) == 0 and len(find_result2) == 0: # transition does not exist
+            return
+        elif len(find_result1) == 1: # 'from_state-to_state' is tag
+            line_id = find_result1[0]
+            arrow_cnf = self.itemcget(line_id, 'arrow')
+            if arrow_cnf == 'both':
+                self.itemconfig(line_id, arrow='first')
+            elif arrow_cnf == 'first': # line exists, but transition does not exist
+                return
+            else:
+                self._mini_lines.discard(line_id)
+                self._loops.discard(line_id)
+                self.delete(line_id)
+        else: # 'to_state-from_state' is tag
+            line_id = find_result2[0]
+            arrow_cnf = self.itemcget(line_id, 'arrow')
+            if arrow_cnf == 'both':
+                self.itemconfig(line_id, arrow='last')
+            elif arrow_cnf == 'last': # line exists, but transition does not exist
+                return
+            else:
+                self._mini_lines.discard(line_id)
+                self._loops.discard(line_id)
+                self.delete(line_id)

@@ -57,6 +57,12 @@ class Machine():
         except KeyError:
             return []
 
+    def get_transition_count(self, from_state, to_state):
+        try:
+            return len(self.transitions[from_state][to_state])
+        except KeyError:
+            return 0
+
     def add_state(self):
         self.num_states += 1
         self.max_state_num += 1
