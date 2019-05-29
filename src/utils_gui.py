@@ -7,6 +7,7 @@ from tkinter.ttk import LabelFrame
 from utils import TestingState
 from math import sqrt, atan, sin, cos
 from random import randrange
+import threading
 
 class StatesPanel(Frame):
     def __init__(self, master, machine, info_manager, display_manager):
@@ -40,8 +41,8 @@ class StatesPanel(Frame):
         try:
             target_state = int(self._state_entry.get())
             init_deleted = target_state == self.machine.init_state
-            self.machine.del_state(target_state)
-            self.display_manager.del_state(target_state, init_deleted)
+            deleted = self.machine.del_state(target_state)
+            if deleted: self.display_manager.del_state(target_state, init_deleted)
         except ValueError:
             self.info_manager.update_status('Enter state number')
         self._state_entry.delete(0, 'end')
@@ -55,6 +56,8 @@ class StatesPanel(Frame):
             self.display_manager.set_init(target_state)
         except ValueError:
             self.info_manager.update_status('Enter state number')
+        except Exception as e:
+            self.info_manager.update_status(str(e))
         self._state_entry.delete(0, 'end')
         self.info_manager.update_info()
 
@@ -65,6 +68,8 @@ class StatesPanel(Frame):
             self.display_manager.set_final(target_state)
         except ValueError:
             self.info_manager.update_status('Enter state number')
+        except Exception as e:
+            self.info_manager.update_status(str(e))
         self._state_entry.delete(0, 'end')
         self.info_manager.update_info()
 
@@ -75,6 +80,8 @@ class StatesPanel(Frame):
             self.display_manager.set_nonfinal(target_state)
         except ValueError:
             self.info_manager.update_status('Enter state number')
+        except Exception as e:
+            self.info_manager.update_status(str(e))
         self._state_entry.delete(0, 'end')
         self.info_manager.update_info()
 
@@ -218,6 +225,22 @@ class TestingPanel(Frame):
         self._stop_btn = Button(self, text='Stop', command=self._stop)
         self._stop_btn.grid(row=1,column=4)
         self._stop_btn.grid_remove()
+        self._test_thread = None
+
+    def _test_task(self, as_function):
+        self._stop_btn.grid()
+        results = self.machine.compute(self._test_str_entry.get(), as_function=as_function)
+        self._stop_btn.grid_remove()
+        self._test_btn.config(state='normal')
+        if not as_function:
+            self._tape_result.config(text=results[1])
+            if results[0]:
+                self._result.config(text='Accepted', bg='green')
+            else:
+                self._result.config(text='Rejected', bg='red')
+        else:
+            self._tape_result.config(text=results)
+        self._test_thread = None
 
     def _run_test(self):
         self._result.config(text='', bg=self._btn_og_color)
@@ -226,22 +249,18 @@ class TestingPanel(Frame):
         sequential = self._seq_var.get()
         as_function = self._as_function_var.get()
         self.info_manager.update_status('{} is blank symbol'.format(self.machine.blank))
+        self._test_btn.config(state='disabled')
+        self.display_manager.clear_highlight()
         if not sequential:
-            results = self.machine.compute(self._test_str_entry.get(), as_function=as_function)
-            if not as_function:
-                self._tape_result.config(text=results[1])
-                if results[0]:
-                    self._result.config(text='Accepted', bg='green')
-                else:
-                    self._result.config(text='Rejected', bg='red')
-            else:
-                self._tape_result.config(text=results)
+            self._tape_result.config(text='')
+            self._test_thread = threading.Thread(target=self._test_task, args=(as_function,))
+            self._test_thread.daemon = True
+            self._test_thread.start()
         else: # sequential test
             self._testing_state = TestingState(self._test_str_entry.get(), as_function, self.machine.init_state)
             self._tape_result.config(
                 text=self._testing_state.tape if len(self._testing_state.tape) != 0 else self.machine.blank,
                 underline=0)
-            self._test_btn.config(state='disabled')
             self._next_btn.grid()
             self._stop_btn.grid()
             self.display_manager.clear_highlight()
@@ -263,12 +282,20 @@ class TestingPanel(Frame):
             self._testing_state = None
 
     def _stop(self):
-        self._testing_state = None
-        self._tape_result.config(text='', underline=-1)
-        self._next_btn.grid_remove()
-        self._stop_btn.grid_remove()
-        self._test_btn.config(state='normal')
-        self.display_manager.clear_highlight()
+        if self._test_thread is not None: # non-sequential test
+            self.machine.abort = True
+            self._test_thread = None
+            self._stop_btn.grid_remove()
+            self._test_btn.config(state='normal')
+            self.info_manager.update_status('Aborted test')
+        else: # sequential test
+            self._testing_state = None
+            self._tape_result.config(text='', underline=-1)
+            self._next_btn.grid_remove()
+            self._stop_btn.grid_remove()
+            self._test_btn.config(state='normal')
+            self.display_manager.clear_highlight()
+            self.info_manager.update_status('Stopped test')
 
 class InfoManager(Frame):
     def __init__(self, master, machine):

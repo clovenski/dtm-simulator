@@ -21,6 +21,7 @@ class Machine():
             self.transitions[i] = {}
             self.final_states[i] = False
             self.states.add(i)
+        self.abort = False
     
     def get_info(self):
         info = {}
@@ -74,7 +75,7 @@ class Machine():
 
     def del_state(self, state_num):
         if state_num not in self.states:
-            return
+            return False
         else:
             self.states.remove(state_num)
             del self.final_states[state_num]
@@ -89,6 +90,7 @@ class Machine():
                     del self.transitions[f][state_num]
                 except:
                     continue
+            return True
 
     def add_transition(self, from_state, to_state, cnf):
         if from_state not in range(1, self.num_states+1):
@@ -131,14 +133,20 @@ class Machine():
     def set_init_state(self, state_num):
         if state_num in self.states:
             self.init_state = state_num
+        else:
+            raise Exception('Invalid state number')
 
     def set_final_state(self, state_num):
         if state_num in self.states:
             self.final_states[state_num] = True
+        else:
+            raise Exception('Invalid state number')
 
     def set_nonfinal_state(self, state_num):
         if state_num in self.states:
             self.final_states[state_num] = False
+        else:
+            raise Exception('Invalid state number')
 
     def is_empty(self):
         return len(self.states) == 0
@@ -159,7 +167,8 @@ class Machine():
         current_state = self.init_state
         index = 0
         done = False
-        while not done and (as_function or not self.final_states[current_state]):
+        self.abort = False
+        while not self.abort and not done and (as_function or not self.final_states[current_state]):
             target_sets = self.transitions[current_state].values()
             target = None
             for transition_set in target_sets:
@@ -180,12 +189,14 @@ class Machine():
                     max_len += 1
             else: # no transition found
                 done = True
+        self.abort = False
+        long_string = len(string) > 50
         if as_function:
-            return ''.join(string) + '...'
+            return (''.join(string[:50]) + '...?') if long_string else (''.join(string) + '...')
         elif index < 0 or not self.final_states[current_state]:
-            return False, ''.join(string) + '...'
+            return (False, ''.join(string[:50]) + '...?') if long_string else (False, ''.join(string) + '...')
         else:
-            return True, ''.join(string) + '...'
+            return (True, ''.join(string[:50]) + '...?') if long_string else (True, ''.join(string) + '...')
 
     def compute_one(self, testing_state):
         '''
