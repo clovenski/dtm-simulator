@@ -7,11 +7,12 @@ A tool that can help design and test a deterministic Turing machine.
 - Python 3
 
 - Tkinter
-  - on Linux, `sudo apt-get install python3-tk` helped
+
+  - on Linux, `sudo apt-get install python3-tk` helped; most likely already built-in on Windows
 
 ## Usage
 
-Run the `main.py` script in the src folder. ie. `./src/main.py` on Linux, `python src\main.py` on Windows.
+Run the `main.py` script in the src folder. ie. `./src/main.py` or `python3 src/main.py` on Linux, `python src\main.py` on Windows.
 
 ## Notes
 
