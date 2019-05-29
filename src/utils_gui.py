@@ -209,9 +209,9 @@ class TestingPanel(Frame):
         self._as_func_btn.grid(row=0,column=2)
         self._seq_var = BooleanVar(self)
         self._seq_btn = Checkbutton(self, text='sequential test', variable=self._seq_var)
-        self._seq_btn.grid(row=0,column=3)
+        self._seq_btn.grid(row=0,column=3,columnspan=2)
         self._test_btn = Button(self, text='Run test', command=self._run_test)
-        self._test_btn.grid(row=0,column=4)
+        self._test_btn.grid(row=0,column=5)
         self._tape_result_lbl = Label(self, text='Tape result')
         self._tape_result_lbl.grid(row=1,column=0)
         self._tape_result = Label(self, width=50, bg='white')
@@ -223,8 +223,11 @@ class TestingPanel(Frame):
         self._next_btn.grid(row=1,column=3)
         self._next_btn.grid_remove()
         self._stop_btn = Button(self, text='Stop', command=self._stop)
-        self._stop_btn.grid(row=1,column=4,pady=3)
+        self._stop_btn.grid(row=1,column=4)
         self._stop_btn.grid_remove()
+        self._clear_btn = Button(self, text='Clear', command=self._clear)
+        self._clear_btn.grid(row=1,column=5)
+        self._clear_btn.grid_remove()
         self._test_thread = None
 
     def _test_task(self, as_function):
@@ -252,6 +255,7 @@ class TestingPanel(Frame):
         self.info_manager.update_status('{} is blank symbol'.format(self.machine.blank))
         self._test_btn.config(state='disabled')
         self.display_manager.clear_highlight()
+        self._clear_btn.grid_remove()
         if not sequential:
             self._tape_result.config(text='')
             self._test_thread = threading.Thread(target=self._test_task, args=(as_function,))
@@ -270,7 +274,7 @@ class TestingPanel(Frame):
     def _next(self):
         self.machine.compute_one(self._testing_state)
         self._tape_result.config(text=self._testing_state.tape, underline=self._testing_state.index)
-        self.display_manager.highlight_state(self._testing_state.current_state, done=self._testing_state.done)
+        self.display_manager.highlight_state(self._testing_state.current_state)
         if self._testing_state.done:
             if not self._testing_state.as_function:
                 if self._testing_state.result:
@@ -279,6 +283,7 @@ class TestingPanel(Frame):
                     self._result.config(text='Rejected', bg='red')
             self._next_btn.grid_remove()
             self._stop_btn.grid_remove()
+            self._clear_btn.grid()
             self._test_btn.config(state='normal')
             self._testing_state = None
 
@@ -297,6 +302,10 @@ class TestingPanel(Frame):
             self._test_btn.config(state='normal')
             self.display_manager.clear_highlight()
             self.info_manager.update_status('Stopped test')
+
+    def _clear(self):
+        self.display_manager.clear_highlight()
+        self._clear_btn.grid_remove()
 
 class InfoManager(Frame):
     def __init__(self, master, machine):
@@ -404,7 +413,6 @@ class Display(Canvas):
         self.config(xscrollcommand=self._xsb.set, yscrollcommand=self._ysb.set, scrollregion=(0,0,1000,1000))
         self._xsb.pack(side='bottom', fill='x')
         self._ysb.pack(side='right', fill='y')
-        self._clear_highlight_btn = Button(self, text='Clear', command=self.clear_highlight)
         self.bind('<ButtonPress-1>', self._pan_start)
         self.bind('<B1-Motion>', self._pan_exec)
         self._moving_obj = False
@@ -665,17 +673,14 @@ class Display(Canvas):
                 self._loops.discard(line_id)
                 self.delete(line_id)
     
-    def highlight_state(self, state_num, done=False):
+    def highlight_state(self, state_num):
         if self._highlighted_state_id is not None:
             self.itemconfig(self._highlighted_state_id, fill=self._default_state_fill)
         state_id = self._id_map[state_num]
         self.itemconfig(state_id, fill=self._highlight_fill)
         self._highlighted_state_id = state_id
-        if done:
-            self._clear_highlight_btn.pack(side='bottom', pady=10)
 
     def clear_highlight(self):
         if self._highlighted_state_id is not None:
             self.itemconfig(self._highlighted_state_id, fill=self._default_state_fill)
             self._highlighted_state_id = None
-        self._clear_highlight_btn.pack_forget()
