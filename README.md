@@ -1,10 +1,13 @@
 # DTM Simulator
 
-Tool that can help design and test a deterministic Turing machine.
+A tool that can help design and test a deterministic Turing machine.
 
 ## Requirements
 
-Python 3
+- Python 3
+
+- Tkinter
+  - on Linux, `sudo apt-get install python3-tk` helped
 
 ## Usage
 
