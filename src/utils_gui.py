@@ -2,7 +2,7 @@
 
 # Classes to organize sections of the GUI
 
-from tkinter import Frame, Button, Label, Entry, Checkbutton, StringVar, BooleanVar, Canvas, Scrollbar
+from tkinter import Frame, Button, Label, Entry, OptionMenu, Checkbutton, StringVar, BooleanVar, Canvas, Scrollbar
 from tkinter.ttk import LabelFrame
 from utils import TestingState
 from math import sqrt, atan, sin, cos
@@ -17,19 +17,19 @@ class StatesPanel(Frame):
         self.info_manager = info_manager
         self.display_manager = display_manager
         self._add_state_btn = Button(self, text='Add state', command=self._add_state)
-        self._add_state_btn.grid(row=0,column=0)
+        self._add_state_btn.grid(row=0,column=0,pady=4)
         self._state_entry_label = Label(self, text='Enter state number')
         self._state_entry_label.grid(row=1,column=0)
         self._state_entry = Entry(self, width=3)
         self._state_entry.grid(row=1,column=1)
         self._set_init_btn = Button(self, text='Set as initial', command=self._set_init)
-        self._set_init_btn.grid(row=1,column=2)
+        self._set_init_btn.grid(row=1,column=2,padx=2)
         self._set_final_btn = Button(self, text='Set as final', command=self._set_final)
-        self._set_final_btn.grid(row=1,column=3)
+        self._set_final_btn.grid(row=1,column=3,padx=2)
         self._set_nonfinal_btn = Button(self, text='Set as non-final', command=self._set_nonfinal)
-        self._set_nonfinal_btn.grid(row=1,column=4)
+        self._set_nonfinal_btn.grid(row=1,column=4,padx=2)
         self._del_state_btn = Button(self, text='Delete state', command=self._del_state)
-        self._del_state_btn.grid(row=1,column=5)
+        self._del_state_btn.grid(row=1,column=5,padx=2)
 
     def _add_state(self):
         self.machine.add_state()
@@ -93,10 +93,10 @@ class TransitionsPanel(Frame):
         self.info_manager = info_manager
         self.display_manager = display_manager
         # states prompts
-        self._t_prompt1 = Label(self, text='Source state number')
-        self._t_prompt1.grid(row=0,column=0)
-        self._t_prompt2 = Label(self, text='Target state number')
-        self._t_prompt2.grid(row=0,column=1)
+        self._t_prompt1 = Label(self, text='Source state')
+        self._t_prompt1.grid(row=0,column=0,padx=5)
+        self._t_prompt2 = Label(self, text='Target state')
+        self._t_prompt2.grid(row=0,column=1,padx=5)
         # configuration prompts
         self._cnf_prompt1 = Label(self, text='R')
         self._cnf_prompt1.grid(row=0,column=2)
@@ -114,19 +114,19 @@ class TransitionsPanel(Frame):
         self._cnf_var1.trace('w', lambda *args: self._restrict_entry(self._cnf_var1,*args))
         self._cnf_var2 = StringVar()
         self._cnf_var2.trace('w', lambda *args: self._restrict_entry(self._cnf_var2,*args))
-        self._cnf_var3 = StringVar()
-        self._cnf_var3.trace('w', lambda *args: self._restrict_entry(self._cnf_var3,*args))
         self._cnf_read_entry = Entry(self, width=2, textvariable=self._cnf_var1)
         self._cnf_read_entry.grid(row=1,column=2)
         self._cnf_write_entry = Entry(self, width=2, textvariable=self._cnf_var2)
         self._cnf_write_entry.grid(row=1,column=3)
-        self._cnf_move_entry = Entry(self, width=2, textvariable=self._cnf_var3)
+        self._cnf_move_var = StringVar(self)
+        self._cnf_move_var.set('R')
+        self._cnf_move_entry = OptionMenu(self, self._cnf_move_var, 'L', 'R')
         self._cnf_move_entry.grid(row=1,column=4)
         # buttons
         self._add_transition_btn = Button(self, text='Add', command=self._add_transition)
-        self._add_transition_btn.grid(row=1,column=5)
+        self._add_transition_btn.grid(row=1,column=5,padx=2)
         self._del_transition_btn = Button(self, text='Delete', command=self._del_transition)
-        self._del_transition_btn.grid(row=1,column=6)
+        self._del_transition_btn.grid(row=1,column=6,padx=2)
     
     def _restrict_entry(self, entry, *args):
         val = entry.get()
@@ -145,7 +145,7 @@ class TransitionsPanel(Frame):
             else:
                 raise Exception('Enter target')
             cnf = '({},{},{})'.format(
-                self._cnf_read_entry.get(),self._cnf_write_entry.get(),self._cnf_move_entry.get())
+                self._cnf_read_entry.get(),self._cnf_write_entry.get(),self._cnf_move_var.get())
             self.machine.add_transition(f_state, t_state, cnf)
             self.display_manager.add_transition(f_state, t_state, cnf)
             self.info_manager.update_status('Added transition')
@@ -158,7 +158,7 @@ class TransitionsPanel(Frame):
         self._t_state_entry.delete(0, 'end')
         self._cnf_read_entry.delete(0, 'end')
         self._cnf_write_entry.delete(0, 'end')
-        self._cnf_move_entry.delete(0, 'end')
+        self._cnf_move_var.set('R')
         self.info_manager.update_info()
 
     def _del_transition(self):
@@ -174,7 +174,7 @@ class TransitionsPanel(Frame):
             else:
                 raise Exception('Enter target')
             cnf = '({},{},{})'.format(
-                self._cnf_read_entry.get(),self._cnf_write_entry.get(),self._cnf_move_entry.get())
+                self._cnf_read_entry.get(),self._cnf_write_entry.get(),self._cnf_move_var.get())
             deleted = self.machine.del_transition(f_state, t_state, cnf)
             self.display_manager.del_transition(f_state, t_state, cnf)
             result = 'Deleted transition' if deleted else 'Transition not found'
@@ -188,7 +188,7 @@ class TransitionsPanel(Frame):
         self._t_state_entry.delete(0, 'end')
         self._cnf_read_entry.delete(0, 'end')
         self._cnf_write_entry.delete(0, 'end')
-        self._cnf_move_entry.delete(0, 'end')
+        self._cnf_move_var.set('R')
         self.info_manager.update_info()
 
 class TestingPanel(Frame):
@@ -215,7 +215,7 @@ class TestingPanel(Frame):
         self._tape_result_lbl = Label(self, text='Tape result')
         self._tape_result_lbl.grid(row=1,column=0)
         self._tape_result = Label(self, width=50, bg='white')
-        self._tape_result.grid(sticky='we',row=1,column=1)
+        self._tape_result.grid(sticky='we',row=1,column=1,pady=6)
         self._result = Label(self, width=10, fg='white')
         self._btn_og_color = self._result.cget('bg')
         self._result.grid(row=1,column=2)
@@ -223,7 +223,7 @@ class TestingPanel(Frame):
         self._next_btn.grid(row=1,column=3)
         self._next_btn.grid_remove()
         self._stop_btn = Button(self, text='Stop', command=self._stop)
-        self._stop_btn.grid(row=1,column=4)
+        self._stop_btn.grid(row=1,column=4,pady=3)
         self._stop_btn.grid_remove()
         self._test_thread = None
 
@@ -245,7 +245,8 @@ class TestingPanel(Frame):
     def _run_test(self):
         self._result.config(text='', bg=self._btn_og_color)
         if self.machine.is_empty():
-            raise Exception('empty machine')
+            self.info_manager.update_status('Empty machine')
+            return
         sequential = self._seq_var.get()
         as_function = self._as_function_var.get()
         self.info_manager.update_status('{} is blank symbol'.format(self.machine.blank))
@@ -404,8 +405,6 @@ class Display(Canvas):
         self._xsb.pack(side='bottom', fill='x')
         self._ysb.pack(side='right', fill='y')
         self._clear_highlight_btn = Button(self, text='Clear', command=self.clear_highlight)
-        self._clear_highlight_btn.pack(side='bottom')
-        self._clear_highlight_btn.pack_forget()
         self.bind('<ButtonPress-1>', self._pan_start)
         self.bind('<B1-Motion>', self._pan_exec)
         self._moving_obj = False
@@ -673,7 +672,7 @@ class Display(Canvas):
         self.itemconfig(state_id, fill=self._highlight_fill)
         self._highlighted_state_id = state_id
         if done:
-            self._clear_highlight_btn.pack(side='bottom')
+            self._clear_highlight_btn.pack(side='bottom', pady=10)
 
     def clear_highlight(self):
         if self._highlighted_state_id is not None:

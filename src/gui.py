@@ -31,5 +31,5 @@ if __name__ == '__main__':
     control.add(trans_panel, text='Transitions')
     control.add(test_panel, text='Testing')
 
-    root.minsize(470,300)
+    root.minsize(480,440)
     root.mainloop()
