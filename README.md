@@ -25,3 +25,13 @@ Some things to note:
 - be mindful when running a non-sequential test as Turing machines can enter an infinite loop; use the stop button to abort the test
 
 - a Turing machine "as a function" does not accept/reject a string, it continues computation until it has no transition to use at its current state; thus a state being final has no effect
+
+## Showcase
+
+![Alt text](examples/showcase_1.gif)
+
+![Alt text](examples/showcase_2.jpg)
+
+![Alt text](examples/showcase_3.jpg)
+
+![Alt text](examples/showcase_4.jpg)
