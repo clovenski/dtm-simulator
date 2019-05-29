@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 # Classes to organize sections of the GUI
 
 from tkinter import Frame, Button, Label, Entry, OptionMenu, Checkbutton, StringVar, BooleanVar, Canvas, Scrollbar
@@ -158,7 +156,6 @@ class TransitionsPanel(Frame):
         self._t_state_entry.delete(0, 'end')
         self._cnf_read_entry.delete(0, 'end')
         self._cnf_write_entry.delete(0, 'end')
-        self._cnf_move_var.set('R')
         self.info_manager.update_info()
 
     def _del_transition(self):

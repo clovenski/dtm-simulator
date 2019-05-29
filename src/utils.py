@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 # Classes to represent the DTM and transitions within it
 
 import re
@@ -282,7 +280,7 @@ class Transition():
         return not self.__eq__(other)
 
 
-# Class to represent a testing state in the GUI version's sequential tests
+# Class to represent a testing state in the sequential tests
 
 class TestingState():
     def __init__(self, string, as_function, init_state):
