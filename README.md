@@ -8,11 +8,11 @@ A tool that can help design and test a deterministic Turing machine.
 
 - Tkinter
 
-  - on Linux, `sudo apt-get install python3-tk` helped; most likely already built-in on Windows
+  - on Linux, `sudo apt-get install python3-tk` helped; most likely already built-in with Python on Windows
 
 ## Usage
 
-Run the `main.py` script in the src folder. ie. `./src/main.py` or `python3 src/main.py` on Linux, `python src\main.py` on Windows.
+Run the `main.py` script in the src folder. ie. `./src/main.py` or `python3 src/main.py` on Linux, `python src\main.py` on Windows
 
 ## Notes
 
@@ -25,6 +25,8 @@ Some things to note:
 - loops between two states (two transitions to and from them) are labeled with a double-headed arrow
 
 - remember that a configuration for a transition in a Turing machine is (*R*, *W*, *M*) where *R* is the symbol the machine reads, *W* is what the machine writes/replaces on the tape and *M* is either left or right; indicating where the machine moves to for the next input
+
+- this application implements the *semi*-infinite tape Turing machine, as in only one side of the tape is infinite; thus if the index moves pass the leftmost index (< 0), the machine halts and rejects the string
 
 - be mindful when running a non-sequential test as Turing machines can enter an infinite loop; use the stop button to abort the test
 
