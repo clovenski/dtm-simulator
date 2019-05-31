@@ -603,9 +603,8 @@ class Display(Canvas):
         self._default_state_fill = 'linen'
         # color of a highlighted state
         self._highlight_fill = 'gold'
-        self._circle_radius = 13
         # lines less than threshold are mini lines, connecting states center to center
-        self._line_thrshld = self._circle_radius * 2 + 9
+        self._line_thrshld = 35
 
     def _pan_start(self, event):
         # start the panning of the canvas if the user is not moving a state
@@ -633,11 +632,12 @@ class Display(Canvas):
         x_sgn = -1 if x < 0 else 1
         try:
             theta = atan(abs(y)/abs(x))
-            x_offset = x_sgn * self._circle_radius * cos(theta)
-            y_offset = y_sgn * self._circle_radius * sin(theta)
+            # circle radius = 13
+            x_offset = x_sgn * 13 * cos(theta)
+            y_offset = y_sgn * 13 * sin(theta)
         except ZeroDivisionError:
             x_offset = 0
-            y_offset = y_sgn * self._circle_radius
+            y_offset = y_sgn * 13
         return (tail[0]-x_offset, tail[1]-y_offset, head[0]+x_offset, head[1]+y_offset)
 
     def _get_mod_linecoords(self, *coords):
@@ -674,7 +674,6 @@ class Display(Canvas):
         # drag a loop specified by the line_id to the coordinates of the event
         event_coords = (self.canvasx(event.x), self.canvasy(event.y))
         coords = (
-            # TODO: adjust this according to self._circle_radius
             event_coords[0]-7,event_coords[1]-11,
             event_coords[0]-22,event_coords[1]-36,
             event_coords[0]+18,event_coords[1]-36,
@@ -705,13 +704,11 @@ class Display(Canvas):
         # drag the state around the canvas
         self._moving_obj = True
         coords = (
-            # TODO: adjust according to self._circle_radius
             self.canvasx(event.x)-12,
             self.canvasy(event.y)-12,
             self.canvasx(event.x)+13,
             self.canvasy(event.y)+13)
         self.coords(state_id, *coords)
-        # TODO: adjust according to self._circle_radius
         self.coords(str(state_id)+'t', coords[0]+12, coords[1]+12)
         self.coords(str(state_id)+'f', coords[0]-3, coords[1]-3, coords[2]+3, coords[3]+3)
         self.coords(str(state_id)+'i', coords[0]-20, coords[1]-20, coords[0], coords[1])
@@ -745,7 +742,6 @@ class Display(Canvas):
             state_num (int): The state number of the newly added state.
             as_init (bool): Whether or not the newly added state is an initial state.
         """
-        # TODO: adjust according to self._circle_radius
         x,y = self.canvasx(75+randrange(150)),self.canvasy(75+randrange(200))
         coords = (x, y, x+25, y+25)
         state_id = self.create_oval(*coords, fill=self._default_state_fill)
@@ -762,7 +758,6 @@ class Display(Canvas):
         self.info_manager.update_status('Added State {}'.format(state_num))
         if as_init:
             # draw init arrow to show as init state
-            # TODO: adjust according to self._circle_radius
             self.create_line(x-20,y-20,x,y,
                 arrow=self._lines_config['arrow'], tags=str(state_id)+'i', width=self._lines_config['width'])
             self._init_id = state_id
@@ -804,7 +799,6 @@ class Display(Canvas):
         state_id = self._id_map[state_num]
         tag = str(state_id) + 'i'
         x,y,_,_ = self.coords(state_id)
-        # TODO: adjust according to self._circle_radius
         self.create_line(x-20,y-20,x,y,
             arrow=self._lines_config['arrow'], tags=tag, width=self._lines_config['width'])
         self._init_id = state_id
@@ -840,7 +834,6 @@ class Display(Canvas):
         # add a loop transition to the specified state
         state_coords = self.coords(self._id_map[state_num])
         coords = (
-            # TODO: adjust according to self._circle_radius
             state_coords[0]+6,state_coords[1]+2,
             state_coords[0]-9,state_coords[1]-23,
             state_coords[0]+31,state_coords[1]-23,
@@ -873,9 +866,9 @@ class Display(Canvas):
         if from_state == to_state:
             return self._add_loop(from_state)
         f_coords = self.coords(self._id_map[from_state])
-        f_coords = (f_coords[0]+self._circle_radius, f_coords[1]+self._circle_radius)
+        f_coords = (f_coords[0]+13, f_coords[1]+13)
         t_coords = self.coords(self._id_map[to_state])
-        t_coords = (t_coords[0]+self._circle_radius, t_coords[1]+self._circle_radius)
+        t_coords = (t_coords[0]+13, t_coords[1]+13)
         coords = (f_coords[0], f_coords[1], t_coords[0], t_coords[1])
         mini_line = self._get_line_dist(*coords) <= self._line_thrshld
         line_coords = self._get_mod_linecoords(*coords) if not mini_line else coords
