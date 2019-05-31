@@ -604,6 +604,7 @@ class Display(Canvas):
         # color of a highlighted state
         self._highlight_fill = 'gold'
         self._circle_radius = 13
+        # lines less than threshold are mini lines, connecting states center to center
         self._line_thrshld = self._circle_radius * 2 + 9
 
     def _pan_start(self, event):
@@ -693,7 +694,7 @@ class Display(Canvas):
             mod_linecoords = self._get_mod_linecoords(*new_coords)
             if mod_linecoords == new_coords: # line became small enough
                 self._mini_lines.add(line_id)
-        elif self._get_line_dist(*raw_linecoords) >= 35: # new line is large enough
+        elif self._get_line_dist(*raw_linecoords) >= self._line_thrshld: # new line is large enough
             self._mini_lines.remove(line_id)
             mod_linecoords = self._get_mod_linecoords(*raw_linecoords)
         else: # keep drawing small line
@@ -704,11 +705,13 @@ class Display(Canvas):
         # drag the state around the canvas
         self._moving_obj = True
         coords = (
+            # TODO: adjust according to self._circle_radius
             self.canvasx(event.x)-12,
             self.canvasy(event.y)-12,
             self.canvasx(event.x)+13,
             self.canvasy(event.y)+13)
         self.coords(state_id, *coords)
+        # TODO: adjust according to self._circle_radius
         self.coords(str(state_id)+'t', coords[0]+12, coords[1]+12)
         self.coords(str(state_id)+'f', coords[0]-3, coords[1]-3, coords[2]+3, coords[3]+3)
         self.coords(str(state_id)+'i', coords[0]-20, coords[1]-20, coords[0], coords[1])
@@ -742,6 +745,7 @@ class Display(Canvas):
             state_num (int): The state number of the newly added state.
             as_init (bool): Whether or not the newly added state is an initial state.
         """
+        # TODO: adjust according to self._circle_radius
         x,y = self.canvasx(75+randrange(150)),self.canvasy(75+randrange(200))
         coords = (x, y, x+25, y+25)
         state_id = self.create_oval(*coords, fill=self._default_state_fill)
@@ -758,6 +762,7 @@ class Display(Canvas):
         self.info_manager.update_status('Added State {}'.format(state_num))
         if as_init:
             # draw init arrow to show as init state
+            # TODO: adjust according to self._circle_radius
             self.create_line(x-20,y-20,x,y,
                 arrow=self._lines_config['arrow'], tags=str(state_id)+'i', width=self._lines_config['width'])
             self._init_id = state_id
@@ -799,6 +804,7 @@ class Display(Canvas):
         state_id = self._id_map[state_num]
         tag = str(state_id) + 'i'
         x,y,_,_ = self.coords(state_id)
+        # TODO: adjust according to self._circle_radius
         self.create_line(x-20,y-20,x,y,
             arrow=self._lines_config['arrow'], tags=tag, width=self._lines_config['width'])
         self._init_id = state_id
@@ -834,6 +840,7 @@ class Display(Canvas):
         # add a loop transition to the specified state
         state_coords = self.coords(self._id_map[state_num])
         coords = (
+            # TODO: adjust according to self._circle_radius
             state_coords[0]+6,state_coords[1]+2,
             state_coords[0]-9,state_coords[1]-23,
             state_coords[0]+31,state_coords[1]-23,
@@ -866,11 +873,11 @@ class Display(Canvas):
         if from_state == to_state:
             return self._add_loop(from_state)
         f_coords = self.coords(self._id_map[from_state])
-        f_coords = (f_coords[0]+13, f_coords[1]+13)
+        f_coords = (f_coords[0]+self._circle_radius, f_coords[1]+self._circle_radius)
         t_coords = self.coords(self._id_map[to_state])
-        t_coords = (t_coords[0]+13, t_coords[1]+13)
+        t_coords = (t_coords[0]+self._circle_radius, t_coords[1]+self._circle_radius)
         coords = (f_coords[0], f_coords[1], t_coords[0], t_coords[1])
-        mini_line = self._get_line_dist(*coords) <= 35
+        mini_line = self._get_line_dist(*coords) <= self._line_thrshld
         line_coords = self._get_mod_linecoords(*coords) if not mini_line else coords
         tag1 = str(self._id_map[from_state]) + '-'
         tag2 = '-' + str(self._id_map[to_state])
