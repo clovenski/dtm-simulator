@@ -5,14 +5,30 @@ A tool that can help design and test a deterministic Turing machine.
 ## Requirements
 
 - Python 3
-
 - Tkinter
-
-  - on Linux, `sudo apt-get install python3-tk` helped; most likely already built-in with Python on Windows
+  - on Linux, `sudo apt-get install python3-tk` helped
+  - most likely already built-in with Python on Windows
 
 ## Usage
 
-Run the `main.py` script in the src folder. ie. `./src/main.py` or `python3 src/main.py` on Linux, `python src\main.py` on Windows
+Go to [releases](https://github.com/clovenski/dtm-simulator/releases) for an easier, portable executable of DTM Simulator.
+
+Python 3 and Tkinter are **not** required in this case. Simply run the unzipped executable to start the application.
+
+### From source:
+
+Download or clone the repository
+```
+git clone https://github.com/clovenski/dtm-simulator.git
+```
+
+Run the application
+```
+./src/main.py
+# OR
+python3 src/main.py # Linux
+python src\main.py  # Windows
+```
 
 ## Notes
 
